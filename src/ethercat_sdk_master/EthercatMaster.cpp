@@ -130,11 +130,8 @@ bool EthercatMaster::startup(){
 }
 
 bool EthercatMaster::update(){
-  for(const auto& drive : drives_)
-    drive->updateWrite();
-  for(const auto& drive : drives_)
-    drive->updateRead();
-  return true;
+  bus_->updateWrite();
+  bus_->updateRead();
 }
 
 void EthercatMaster::shutdown(){
