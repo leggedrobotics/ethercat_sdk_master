@@ -5,6 +5,7 @@
 namespace ecat_master{
 
 void EthercatMaster::loadEthercatMasterConfiguration(const EthercatMasterConfiguration &configuration){
+  drives_.clear();
   configuration_ = configuration;
   createEthercatBus();
 }
@@ -84,22 +85,19 @@ bool EthercatMaster::attachDrive(std::shared_ptr<EthercatDrive> drive){
               << "' because it already exists." << std::endl;
     return false;
   }
+  bus_->addSlave(drive);
+  drive->setEthercatBusBasePointer(bus_.get());
+  drives_.push_back(drive);
   std::cout << "Attached drive '"
             << drive->getName()
             << "' to address "
             << drive->getAddress()
             << std::endl;
-  drive->setEthercatBusBasePointer(bus_.get());
-  drives_.push_back(drive);
   return true;
 }
 
 bool EthercatMaster::startup(){
   bool success = true;
-  success &= bus_->startup(false); // TODO solve this size_check issue
-  if(!success)
-    return false;
-  std::cout << "Bus started successfully";
 
   // Drives requiring clock synchronization and/or online preop config
   std::vector<uint32_t> addressesWithClockSync;
@@ -113,12 +111,17 @@ bool EthercatMaster::startup(){
       drivesWithPreopConfig.push_back(drive);
     }
   }
+  success &= bus_->startup(false); // TODO solve this size_check issue
+  if(!success)
+    return false;
+  syncDistributedClock0(addressesWithClockSync);
   setEthercatState(EC_STATE_PRE_OP, addressesWithPreopConfig);
   for(const auto& drive: drivesWithPreopConfig){
     drive->runPreopConfiguration();
   }
   setEthercatState(EC_STATE_INIT, std::vector<uint32_t>{0});
   bus_->shutdown(); // TODO: Check if required
+  usleep(1000000);
   bus_->startup(false); // TODO: solve size_check issue
   syncDistributedClock0(addressesWithClockSync);
   setEthercatState(EC_STATE_OPERATIONAL, std::vector<uint32_t>{0});
