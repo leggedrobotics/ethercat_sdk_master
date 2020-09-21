@@ -4,6 +4,10 @@
 
 namespace ecat_master{
 
+void EthercatDrive::setTimeStep(double timeStep){
+  timeStep_ = timeStep;
+}
+
 // Sdo write template specialization
 template <>
 bool EthercatDrive::sendSdoWrite(const uint16_t index, const uint8_t subindex, const bool completeAccess, const int8_t value) {

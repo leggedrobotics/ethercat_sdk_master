@@ -14,6 +14,7 @@ public:
   void createEthercatBus();
   bool attachDrive(std::shared_ptr<EthercatDrive> drive);
   bool startup();
+  bool startupStandalone();
   bool update();
   void shutdown();
 
@@ -28,7 +29,6 @@ protected:
 
 protected:
   bool driveExists(const std::string& name);
-  void setEthercatState(ec_state state, const std::vector<uint32_t>& addresses);
   void syncDistributedClock0(const std::vector<uint32_t>& addresses);
 
 

@@ -15,6 +15,7 @@ public:
   virtual bool preopConfigurationRequired(){return false;}
   virtual bool clockSyncRequired(){return false;}
   virtual bool runPreopConfiguration(){ return true; }
+  virtual void setTimeStep(double timeStep);
 
 public:
   template <typename Value>
@@ -28,6 +29,7 @@ public:
 
 protected:
   std::string name_;
+  double timeStep_{0.0};
 };
 
 // template specialization sdo writing

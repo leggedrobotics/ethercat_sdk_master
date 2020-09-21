@@ -14,65 +14,6 @@ void EthercatMaster::createEthercatBus(){
   bus_.reset(new soem_interface::EthercatBusBase(configuration_.networkInterface));
 }
 
-// According to <https://infosys.beckhoff.com/index.php?content=../content/1031/ax2000-b110/html/bt_ecbasics_ecstatemachine.htm>
-void EthercatMaster::setEthercatState(ec_state state, const std::vector<uint32_t>& addresses){
-  switch(state){
-    case EC_STATE_INIT:
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_INIT, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_INIT, address, 50, 0.05);
-      }
-      break;
-    case EC_STATE_PRE_OP:
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_INIT, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_INIT, address, 50, 0.05);
-      }
-      usleep(configuration_.ethercatStateChangeTimeout);
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_PRE_OP, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_PRE_OP, address, 50, 0.05);
-      }
-      break;
-    case EC_STATE_OPERATIONAL:
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_INIT, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_INIT, address, 50, 0.05);
-      }
-      usleep(configuration_.ethercatStateChangeTimeout);
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_PRE_OP, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_PRE_OP, address, 50, 0.05);
-      }
-      usleep(configuration_.ethercatStateChangeTimeout);
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_SAFE_OP, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_SAFE_OP, address, 50, 0.05);
-      }
-      usleep(configuration_.ethercatStateChangeTimeout);
-      for(const auto& address : addresses){
-        bus_->setState(EC_STATE_OPERATIONAL, address);
-      }
-      for(const auto& address : addresses){
-        bus_->waitForState(EC_STATE_OPERATIONAL, address, 50, 0.05);
-      }
-      break;
-    default:
-      std::cout << "Requested EtherCAT state is not implemented" << std::endl;
-  }
-}
 void EthercatMaster::syncDistributedClock0(const std::vector<uint32_t>& addresses){
   for(const auto& address: addresses){
     bus_->syncDistributedClock0(address, true, configuration_.timeStep, configuration_.timeStep / 2.f);
@@ -87,6 +28,7 @@ bool EthercatMaster::attachDrive(std::shared_ptr<EthercatDrive> drive){
   }
   bus_->addSlave(drive);
   drive->setEthercatBusBasePointer(bus_.get());
+  drive->setTimeStep(configuration_.timeStep);
   drives_.push_back(drive);
   std::cout << "Attached drive '"
             << drive->getName()
@@ -100,41 +42,30 @@ bool EthercatMaster::startup(){
   bool success = true;
 
   // Drives requiring clock synchronization and/or online preop config
-  std::vector<uint32_t> addressesWithClockSync;
-  std::vector<uint32_t> addressesWithPreopConfig;
-  std::vector<std::shared_ptr<EthercatDrive>> drivesWithPreopConfig;
-  for(const auto& drive : drives_){
-    if(drive->clockSyncRequired())
-      addressesWithClockSync.push_back(drive->getAddress());
-    if(drive->preopConfigurationRequired()){
-      addressesWithPreopConfig.push_back(drive->getAddress());
-      drivesWithPreopConfig.push_back(drive);
-    }
-  }
   success &= bus_->startup(false); // TODO solve this size_check issue
   if(!success)
     return false;
-  syncDistributedClock0(addressesWithClockSync);
-  setEthercatState(EC_STATE_PRE_OP, addressesWithPreopConfig);
-  for(const auto& drive: drivesWithPreopConfig){
-    drive->runPreopConfiguration();
+  for(const auto& drive : drives_){
+    success &= drive->runPreopConfiguration();
   }
-  setEthercatState(EC_STATE_INIT, std::vector<uint32_t>{0});
   bus_->shutdown(); // TODO: Check if required
   usleep(1000000);
-  bus_->startup(false); // TODO: solve size_check issue
-  syncDistributedClock0(addressesWithClockSync);
-  setEthercatState(EC_STATE_OPERATIONAL, std::vector<uint32_t>{0});
-
+  success &= bus_->startup(false); // TODO: solve size_check issue
   for(const auto& drive : drives_){
     success &= drive->startup();
   }
   return success;
 }
 
+// TODO: implement
+bool EthercatMaster::startupStandalone(){
+  return true;
+}
+
 bool EthercatMaster::update(){
   bus_->updateWrite();
   bus_->updateRead();
+  return true;
 }
 
 void EthercatMaster::shutdown(){
