@@ -12,9 +12,7 @@ public:
   virtual void shutdown() = 0;
 
 public:
-  virtual bool preopConfigurationRequired(){return false;}
   virtual bool clockSyncRequired(){return false;}
-  virtual bool runPreopConfiguration(){ return true; }
   virtual void setTimeStep(double timeStep);
 
 public:

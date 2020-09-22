@@ -16,7 +16,7 @@ void EthercatMaster::createEthercatBus(){
 
 void EthercatMaster::syncDistributedClock0(const std::vector<uint32_t>& addresses){
   for(const auto& address: addresses){
-    bus_->syncDistributedClock0(address, true, configuration_.timeStep, configuration_.timeStep / 2.f);
+    //bus_->syncDistributedClock0(address, true, configuration_.timeStep, configuration_.timeStep / 2.f);
   }
 }
 
@@ -40,21 +40,14 @@ bool EthercatMaster::attachDrive(std::shared_ptr<EthercatDrive> drive){
 
 bool EthercatMaster::startup(){
   bool success = true;
-
-  // Drives requiring clock synchronization and/or online preop config
-  success &= bus_->startup(false); // TODO solve this size_check issue
-  if(!success)
-    return false;
-  for(const auto& drive : drives_){
-    success &= drive->runPreopConfiguration();
-  }
-  bus_->shutdown(); // TODO: Check if required
-  usleep(1000000);
-  success &= bus_->startup(false); // TODO: solve size_check issue
-  for(const auto& drive : drives_){
-    success &= drive->startup();
-  }
+  success &= bus_->startup(false);
+  bool isSafeOp = bus_->waitForState(EC_STATE_SAFE_OP, 1, 50, 0.05);
+  std::cout << "in safe op after bus startup: " << std::boolalpha << isSafeOp << std::noboolalpha << std::endl;
+  bus_->setState(EC_STATE_OPERATIONAL, 1);
+  success &= bus_->waitForState(EC_STATE_OPERATIONAL, 1, 50, 0.05);
+  std::cout << "EthercatMaster::startup() success: " << success << std::endl;
   return success;
+
 }
 
 // TODO: implement
