@@ -21,6 +21,10 @@ public:
 // Configuration
 public:
   void loadEthercatMasterConfiguration(const EthercatMasterConfiguration& configuration);
+  EthercatMasterConfiguration getConfiguration()
+  {
+    return configuration_;
+  }
 
 protected:
   std::unique_ptr<soem_interface::EthercatBusBase> bus_;
