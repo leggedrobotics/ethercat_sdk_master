@@ -66,6 +66,12 @@ void EthercatMaster::shutdown(){
   bus_->shutdown();
 }
 
+void EthercatMaster::preShutdown()
+{
+   for(auto & slave: drives_)
+      slave->preShutdown();
+}
+
 bool EthercatMaster::driveExists(const std::string& name){
   for (const auto& drive : drives_) {
     if (drive->getName() == name) {

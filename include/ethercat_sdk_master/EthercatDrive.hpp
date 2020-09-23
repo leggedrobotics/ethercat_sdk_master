@@ -14,6 +14,7 @@ public:
 public:
   virtual bool clockSyncRequired(){return false;}
   virtual void setTimeStep(double timeStep);
+  virtual void preShutdown() {};
 
 public:
   template <typename Value>

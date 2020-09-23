@@ -17,6 +17,7 @@ public:
   bool startupStandalone();
   bool update();
   void shutdown();
+  void preShutdown();
 
 // Configuration
 public:
