@@ -15,6 +15,9 @@ public:
   virtual bool clockSyncRequired(){return false;}
   virtual void setTimeStep(double timeStep);
   virtual void preShutdown() {};
+  virtual std::string getName() const override {return name_;}
+
+
 
 public:
   template <typename Value>
