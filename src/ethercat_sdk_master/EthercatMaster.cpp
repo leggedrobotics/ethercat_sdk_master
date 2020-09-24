@@ -10,8 +10,13 @@ void EthercatMaster::loadEthercatMasterConfiguration(const EthercatMasterConfigu
   createEthercatBus();
 }
 
+EthercatMasterConfiguration EthercatMaster::getConfiguration()
+{
+    return configuration_;
+}
+
 void EthercatMaster::createEthercatBus(){
-  bus_.reset(new soem_interface::EthercatBusBase(configuration_.networkInterface));
+    bus_.reset(new soem_interface::EthercatBusBase(configuration_.networkInterface));
 }
 
 void EthercatMaster::syncDistributedClock0(const std::vector<uint32_t>& addresses){
@@ -41,11 +46,16 @@ bool EthercatMaster::attachDrive(std::shared_ptr<EthercatDrive> drive){
 bool EthercatMaster::startup(){
   bool success = true;
   success &= bus_->startup(false);
-  bool isSafeOp = bus_->waitForState(EC_STATE_SAFE_OP, 1, 50, 0.05);
-  std::cout << "in safe op after bus startup: " << std::boolalpha << isSafeOp << std::noboolalpha << std::endl;
-  bus_->setState(EC_STATE_OPERATIONAL, 1);
-  success &= bus_->waitForState(EC_STATE_OPERATIONAL, 1, 50, 0.05);
-  std::cout << "EthercatMaster::startup() success: " << success << std::endl;
+
+  for(const auto & slave: drives_)
+  {
+      bus_->waitForState(EC_STATE_SAFE_OP, slave->getAddress(), 50, 0.05);
+      bus_->setState(EC_STATE_OPERATIONAL, slave->getAddress());
+      success &= bus_->waitForState(EC_STATE_OPERATIONAL, slave->getAddress(), 50, 0.05);
+  }
+
+
+  MELO_DEBUG_STREAM( "EthercatMaster::startup() success: " << success);
   return success;
 
 }
