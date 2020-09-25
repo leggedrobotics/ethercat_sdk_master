@@ -1,4 +1,4 @@
-#include "ethercat_sdk_master/EthercatDrive.hpp"
+#include "ethercat_sdk_master/EthercatDevice.hpp"
 #include "ethercat_sdk_master/EthercatMasterConfiguration.hpp"
 
 #include <soem_interface/EthercatBusBase.hpp>
@@ -12,7 +12,7 @@ class EthercatMaster {
 public:
   EthercatMaster() = default;
   void createEthercatBus();
-  bool attachDrive(std::shared_ptr<EthercatDrive> drive);
+  bool attachDevice(std::shared_ptr<EthercatDevice> device);
   bool startup();
   bool startupStandalone();
   bool update();
@@ -26,11 +26,11 @@ public:
 
 protected:
   std::unique_ptr<soem_interface::EthercatBusBase> bus_;
-  std::vector<std::shared_ptr<EthercatDrive>> drives_;
+  std::vector<std::shared_ptr<EthercatDevice>> devices_;
   EthercatMasterConfiguration configuration_;
 
 protected:
-  bool driveExists(const std::string& name);
+  bool deviceExists(const std::string& name);
   void syncDistributedClock0(const std::vector<uint32_t>& addresses);
 
 

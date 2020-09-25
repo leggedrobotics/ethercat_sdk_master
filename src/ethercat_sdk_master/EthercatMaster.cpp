@@ -5,7 +5,7 @@
 namespace ecat_master{
 
 void EthercatMaster::loadEthercatMasterConfiguration(const EthercatMasterConfiguration &configuration){
-  drives_.clear();
+  devices_.clear();
   configuration_ = configuration;
   createEthercatBus();
 }
@@ -21,24 +21,24 @@ void EthercatMaster::createEthercatBus(){
 
 void EthercatMaster::syncDistributedClock0(const std::vector<uint32_t>& addresses){
   for(const auto& address: addresses){
-    //bus_->syncDistributedClock0(address, true, configuration_.timeStep, configuration_.timeStep / 2.f);
+    bus_->syncDistributedClock0(address, true, configuration_.timeStep, configuration_.timeStep / 2.f);
   }
 }
 
-bool EthercatMaster::attachDrive(std::shared_ptr<EthercatDrive> drive){
-  if (driveExists(drive->getName())){
-    std::cout << "Cannot attach drive with name '" << drive->getName()
+bool EthercatMaster::attachDevice(std::shared_ptr<EthercatDevice> device){
+  if (deviceExists(device->getName())){
+    std::cout << "Cannot attach device with name '" << device->getName()
               << "' because it already exists." << std::endl;
     return false;
   }
-  bus_->addSlave(drive);
-  drive->setEthercatBusBasePointer(bus_.get());
-  drive->setTimeStep(configuration_.timeStep);
-  drives_.push_back(drive);
-  std::cout << "Attached drive '"
-            << drive->getName()
+  bus_->addSlave(device);
+  device->setEthercatBusBasePointer(bus_.get());
+  device->setTimeStep(configuration_.timeStep);
+  devices_.push_back(device);
+  std::cout << "Attached device '"
+            << device->getName()
             << "' to address "
-            << drive->getAddress()
+            << device->getAddress()
             << std::endl;
   return true;
 }
@@ -47,11 +47,12 @@ bool EthercatMaster::startup(){
   bool success = true;
   success &= bus_->startup(false);
 
-  for(const auto & slave: drives_)
+  for(const auto & device : devices_)
   {
-      bus_->waitForState(EC_STATE_SAFE_OP, slave->getAddress(), 50, 0.05);
-      bus_->setState(EC_STATE_OPERATIONAL, slave->getAddress());
-      success &= bus_->waitForState(EC_STATE_OPERATIONAL, slave->getAddress(), 50, 0.05);
+    if(!bus_->waitForState(EC_STATE_SAFE_OP, device->getAddress(), 50, 0.05))
+      std::cout << "not in safe op after satrtup!" << std::endl;
+    bus_->setState(EC_STATE_OPERATIONAL, device->getAddress());
+    success &= bus_->waitForState(EC_STATE_OPERATIONAL, device->getAddress(), 50, 0.05);
   }
 
 
@@ -78,13 +79,13 @@ void EthercatMaster::shutdown(){
 
 void EthercatMaster::preShutdown()
 {
-   for(auto & slave: drives_)
-      slave->preShutdown();
+   for(auto & device : devices_)
+      device->preShutdown();
 }
 
-bool EthercatMaster::driveExists(const std::string& name){
-  for (const auto& drive : drives_) {
-    if (drive->getName() == name) {
+bool EthercatMaster::deviceExists(const std::string& name){
+  for (const auto& device : devices_) {
+    if (device->getName() == name) {
       return true;
     }
   }

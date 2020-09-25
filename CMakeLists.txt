@@ -49,7 +49,7 @@ include_directories(
 
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/EthercatMaster.cpp
-  src/${PROJECT_NAME}/EthercatDrive.cpp
+  src/${PROJECT_NAME}/EthercatDevice.cpp
 )
 add_dependencies(
   ${PROJECT_NAME}
