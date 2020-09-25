@@ -10,9 +10,11 @@ namespace ecat_master{
 
 class EthercatMaster {
 public:
+  typedef std::shared_ptr<EthercatMaster> SharedPtr;
+public:
   EthercatMaster() = default;
   void createEthercatBus();
-  bool attachDevice(std::shared_ptr<EthercatDevice> device);
+  bool attachDevice(EthercatDevice::SharedPtr device);
   bool startup();
   bool startupStandalone();
   bool update();
@@ -26,7 +28,7 @@ public:
 
 protected:
   std::unique_ptr<soem_interface::EthercatBusBase> bus_;
-  std::vector<std::shared_ptr<EthercatDevice>> devices_;
+  std::vector<EthercatDevice::SharedPtr> devices_;
   EthercatMasterConfiguration configuration_;
 
 protected:

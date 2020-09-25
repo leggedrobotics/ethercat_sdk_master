@@ -25,7 +25,7 @@ void EthercatMaster::syncDistributedClock0(const std::vector<uint32_t>& addresse
   }
 }
 
-bool EthercatMaster::attachDevice(std::shared_ptr<EthercatDevice> device){
+bool EthercatMaster::attachDevice(EthercatDevice::SharedPtr device){
   if (deviceExists(device->getName())){
     std::cout << "Cannot attach device with name '" << device->getName()
               << "' because it already exists." << std::endl;

@@ -9,6 +9,8 @@
 namespace ecat_master {
 class EthercatDevice : public soem_interface::EthercatSlaveBase{
 public:
+  typedef std::shared_ptr<EthercatDevice> SharedPtr;
+public:
   virtual void shutdown() = 0;
 
 public:
