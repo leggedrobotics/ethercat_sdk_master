@@ -25,6 +25,8 @@ find_package(catkin REQUIRED
     ${CATKIN_PACKAGE_DEPENDENCIES}
 )
 
+find_package(Threads)
+
 
 ###################################
 ## catkin specific configuration ##
@@ -59,6 +61,8 @@ target_link_libraries(
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${YAML_CPP_LIBRARIES}
+  Threads::Threads
+
 )
 
 #############

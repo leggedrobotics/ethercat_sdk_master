@@ -9,6 +9,7 @@ struct EthercatMasterConfiguration{
   std::string networkInterface{""};
   double timeStep{0.0};
   unsigned int ethercatStateChangeTimeout{10000}; // microseconds
+  unsigned int updateRateTooLowWarnThreshold{50};
 
 };
 
