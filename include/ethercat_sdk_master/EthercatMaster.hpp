@@ -20,6 +20,7 @@ public:
   bool update();
   void shutdown();
   void preShutdown();
+  soem_interface::EthercatBusBase* getBusPtr() { return bus_.get(); }
 
 // Configuration
 public:
@@ -27,7 +28,7 @@ public:
   EthercatMasterConfiguration getConfiguration();
 
 protected:
-  std::unique_ptr<soem_interface::EthercatBusBase> bus_;
+  std::unique_ptr<soem_interface::EthercatBusBase> bus_{nullptr};
   std::vector<EthercatDevice::SharedPtr> devices_;
   EthercatMasterConfiguration configuration_;
 
