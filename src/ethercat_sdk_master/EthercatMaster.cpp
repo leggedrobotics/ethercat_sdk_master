@@ -70,12 +70,7 @@ bool EthercatMaster::startup(){
 
 }
 
-// TODO: implement
-bool EthercatMaster::startupStandalone(){
-  return true;
-}
-
-bool EthercatMaster::update(UpdateMode updateMode){
+void EthercatMaster::update(UpdateMode updateMode){
   bus_->updateWrite();
   bus_->updateRead();
 
@@ -90,7 +85,6 @@ bool EthercatMaster::update(UpdateMode updateMode){
     case UpdateMode::NonStandalone:
       break;
   }
-  return true;
 }
 
 void EthercatMaster::shutdown(){
