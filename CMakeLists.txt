@@ -1,5 +1,5 @@
 # CMakeLists.txt of ethercat_sdk_master
-# Copyright (2019-2020) Robotics Systems Lab - ETH Zurich
+# Copyright (2020) Robotics Systems Lab - ETH Zurich
 
 cmake_minimum_required(VERSION 2.8.3)
 project(ethercat_sdk_master)
