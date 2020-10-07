@@ -23,6 +23,7 @@
 #include <memory>
 #include <vector>
 #include <chrono>
+#include <ctime>
 
 namespace ecat_master{
 
@@ -112,19 +113,50 @@ public:
    */
   EthercatMasterConfiguration getConfiguration();
 
+  /*!
+   * Set the priority of the calling thread.
+   * The following pthread parameters are set (man pthread_setschedparam):
+   * - SCHED_FIFO
+   * - Priority: priority (higher number means higher priority);
+   *   Check `chrt -m` to see the max number for your system.
+   *   Default: 90, works good on most modern machines
+   * @warning This function needs to be called from within the thread executing
+   * the communication update. If handle threads externally then a call to this
+   * function can be omitted.
+   * @note This requires pthreads and will thus only work on POSIX compliant
+   * systems (e.g. linux)
+   * @note Check that the user owning this process has the capabilities to change
+   * scheduling parameters (/etc/security/limits.conf, man limits.conf)
+   * @param[in] priority Prioirity of the calling thread.
+   * Default: 99, Range on most systems: 1 - 99
+   * @return True if successful
+   */
+  bool setRealtimePriority(int priority = 99);
+
+  /*!
+   * Resets the update rate scheduler (heartbeat reset).
+   * Call this RIGHT BEFORE restarting PDO communication after an
+   * interruption, i.e. right before the newly first call to update().
+   * The calling thread shall be the same running the update loop.
+   * @note Does not have to be called on the FIRST startup of the communication
+   * (if update() is not called outsied of the update loop before, which it
+   * shouldn't be anyway).
+   */
+  void resetUpdateScheduler() { firstUpdate_ = true; }
+
 protected:
   std::unique_ptr<soem_interface::EthercatBusBase> bus_{nullptr};
   std::vector<EthercatDevice::SharedPtr> devices_;
   EthercatMasterConfiguration configuration_;
-  std::chrono::time_point<std::chrono::high_resolution_clock> lastWakeupTime_;
-  std::chrono::high_resolution_clock::duration updateDuration_;
-  std::chrono::high_resolution_clock::duration deltaT_;
-  std::chrono::high_resolution_clock::duration targetUpdateDuration_;
   unsigned int rateTooLowCounter_{0};
+
+  timespec sleepEnd_{0, 0};
+  timespec lastWakeup_{0, 0};
+  long int timestepNs_{0};
+  bool firstUpdate_{true};
 
 protected:
   bool deviceExists(const std::string& name);
-  void syncDistributedClock0(const std::vector<uint32_t>& addresses);
 
   /*!
    * Let the update thread sleep such that the desired update rate is created.
@@ -136,7 +168,6 @@ protected:
    *   Every timestep is kept as close to the desired value as possible.
    */
   void createUpdateHeartbeat(bool enforceRate);
-
 
 };
 } // namespace ecat_master

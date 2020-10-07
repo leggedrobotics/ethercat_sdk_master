@@ -41,13 +41,6 @@ public:
 public:
 
   /*!
-   * Demand EtherCAT distributed clock synchronization for the device.
-   * The distributed clock 0 is synchronized.
-   * @return true if clock synchronization is required. (Default: false)
-   */
-  virtual bool clockSyncRequired(){return false;}
-
-  /*!
    * Set the update time step.
    * This value needs to correspond to the target time step used in the update
    * of the EtherCAT communication.
@@ -78,6 +71,11 @@ public:
 
 
 public:
+  /*!
+   * Set the name of the device.
+   * @param[in] name Name of device.
+   */
+  void setName(std::string name) {name_ = name;}
 
   /*!
    * Send a write SDO of type Value to the device.
