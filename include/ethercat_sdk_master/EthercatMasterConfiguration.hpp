@@ -43,6 +43,14 @@ struct EthercatMasterConfiguration{
    *   took too long.
    */
   unsigned int updateRateTooLowWarnThreshold{50};
+
+  /*!
+   * Lower bound to the update step.
+   * Even if rate compensation is turned on, the update step will never be
+   * lower than rateCompensationCoefficient * timeStep
+   * TODO: needs to be tested further
+   */
+  double rateCompensationCoefficient{0.5};
 };
 
 } // namespace ecat_master

@@ -1,4 +1,3 @@
-
 /*
  ** Copyright 2020 Robotic Systems Lab - ETH Zurich:
  ** Lennart Nachtigall, Jonas Junger
@@ -13,10 +12,14 @@
  ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include "ethercat_sdk_master/EthercatMaster.hpp"
 
 #include <thread>
+#include <pthread.h>
+#include <cmath>
+
+#define SLEEP_EARLY_STOP_NS (50000) // less than 1e9 - 1!!
+#define BILLION (1000000000)
 
 namespace ecat_master{
 
@@ -25,13 +28,7 @@ void EthercatMaster::loadEthercatMasterConfiguration(const EthercatMasterConfigu
   devices_.clear();
   configuration_ = configuration;
 
-  // set durations and timepoints
-  targetUpdateDuration_ = std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(
-    std::chrono::duration<double>(configuration.timeStep));
-  updateDuration_ = 0s;
-  deltaT_ = 0s;
-  lastWakeupTime_ = std::chrono::high_resolution_clock::now() +
-    std::chrono::duration<int>(std::numeric_limits<int>::max());
+  timestepNs_ = floor(configuration.timeStep * 1e9);
   createEthercatBus();
 }
 
@@ -44,49 +41,47 @@ void EthercatMaster::createEthercatBus(){
     bus_.reset(new soem_interface::EthercatBusBase(configuration_.networkInterface));
 }
 
-void EthercatMaster::syncDistributedClock0(const std::vector<uint32_t>& addresses){
-  for(const auto& address: addresses){
-    bus_->syncDistributedClock0(address, true, configuration_.timeStep, configuration_.timeStep / 2.f);
-  }
-}
-
 bool EthercatMaster::attachDevice(EthercatDevice::SharedPtr device){
   if (deviceExists(device->getName())){
-    std::cout << "Cannot attach device with name '" << device->getName()
-              << "' because it already exists." << std::endl;
+    MELO_ERROR_STREAM("Cannot attach device with name '" << device->getName()
+                      << "' because it already exists.");
     return false;
   }
   bus_->addSlave(device);
   device->setEthercatBusBasePointer(bus_.get());
   device->setTimeStep(configuration_.timeStep);
   devices_.push_back(device);
-  std::cout << "Attached device '"
-            << device->getName()
-            << "' to address "
-            << device->getAddress()
-            << std::endl;
+  MELO_DEBUG_STREAM("Attached device '"
+                    << device->getName()
+                    << "' to address "
+                    << device->getAddress());
   return true;
 }
 
 bool EthercatMaster::startup(){
   bool success = true;
+
   success &= bus_->startup(false);
 
   for(const auto & device : devices_)
   {
     if(!bus_->waitForState(EC_STATE_SAFE_OP, device->getAddress(), 50, 0.05))
-      std::cout << "not in safe op after satrtup!" << std::endl;
+      MELO_ERROR("not in safe op after satrtup!");
     bus_->setState(EC_STATE_OPERATIONAL, device->getAddress());
     success &= bus_->waitForState(EC_STATE_OPERATIONAL, device->getAddress(), 50, 0.05);
   }
 
-
-  MELO_DEBUG_STREAM( "EthercatMaster::startup() success: " << success);
+  if(!success)
+    MELO_ERROR("[ethercat_sdk_master:EthercatMaster::startup] Startup not successful.");
   return success;
-
 }
 
 void EthercatMaster::update(UpdateMode updateMode){
+  if(firstUpdate_){
+    clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+    sleepEnd_ = lastWakeup_;
+    firstUpdate_ = false;
+  }
   bus_->updateWrite();
   bus_->updateRead();
 
@@ -123,42 +118,104 @@ bool EthercatMaster::deviceExists(const std::string& name){
   return false;
 }
 
-void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
-  using namespace std::chrono;
-  using namespace std::chrono_literals;
-  // trying to keep the rate constant but not necessarily the update time step
-  updateDuration_ = high_resolution_clock::now() - lastWakeupTime_;
-  if(enforceRate){
-    // Rate is enforced
-    deltaT_ = targetUpdateDuration_ - updateDuration_ + deltaT_;
-    if(deltaT_.count() > 0){ // we are early
-      if(deltaT_ > targetUpdateDuration_)
-        std::this_thread::sleep_for(targetUpdateDuration_); // happens on first startup
-      else
-        std::this_thread::sleep_for(deltaT_);
-      deltaT_ = 0s;
-      rateTooLowCounter_ = 0;
-    } else { // "We are late"
-      rateTooLowCounter_++;
-    }
+bool EthercatMaster::setRealtimePriority(int priority){
+  sched_param param;
+  param.sched_priority = priority;
+  int errorFlag = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+  if(errorFlag != 0){
+    MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]"
+                      << " Could not set thread priority. Check limits.conf or"
+                      << " execute as root");
+    return false;
+  }
+  return true;
+}
+
+
+////////////////////////////
+// Timing functionalities //
+////////////////////////////
+
+// true if ts1 < ts2
+inline bool timespecSmallerThan(timespec* ts1, timespec* ts2){
+  return (ts1->tv_sec < ts2->tv_sec || (ts1->tv_sec == ts2->tv_sec && ts1->tv_nsec < ts2->tv_nsec));
+}
+
+inline void highPrecisionSleep(timespec ts){
+  if(ts.tv_nsec >= SLEEP_EARLY_STOP_NS){
+    ts.tv_nsec -= SLEEP_EARLY_STOP_NS;
   } else {
-    // Rate is not enforced
-    deltaT_ = targetUpdateDuration_ - updateDuration_;
-    if(deltaT_.count() > 0){
-      if(deltaT_ > targetUpdateDuration_)
-        std::this_thread::sleep_for(targetUpdateDuration_); // happens on first startup
-      else
-        std::this_thread::sleep_for(deltaT_);
-      rateTooLowCounter_ = 0;
-    } else {
+    ts.tv_nsec += BILLION - SLEEP_EARLY_STOP_NS;
+    ts.tv_sec -= 1;
+  }
+  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+
+  // busy waiting for the remaining time
+  timespec now;
+  do {
+    clock_gettime(CLOCK_MONOTONIC, &now);
+  } while(timespecSmallerThan(&now, &ts));
+}
+
+
+inline void addNsecsToTimespec(timespec *ts, long int ns){
+  if(ts->tv_nsec < BILLION - (ns % BILLION)){
+    ts->tv_nsec += ns % BILLION;
+    ts->tv_sec += ns / BILLION;
+  } else {
+    ts->tv_nsec += (ns % BILLION) - BILLION;
+    ts->tv_sec += ns / BILLION + 1;
+  }
+}
+
+inline long int getTimeDiffNs(timespec t_end, timespec t_start){
+  return BILLION*(t_end.tv_sec - t_start.tv_sec) + t_end.tv_nsec - t_start.tv_nsec;
+}
+
+void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
+  if(enforceRate){
+    // since we do sleep in absolute times keeping the rate constant is trivial:
+    // we simply increment the target sleep wakeup time by the timestep in every
+    // iteration.
+    addNsecsToTimespec(&sleepEnd_, timestepNs_);
+  } else {
+    // sleep until timeStepNs_ nanoseconds from last wakeup time
+    sleepEnd_ = lastWakeup_;
+    addNsecsToTimespec(&sleepEnd_, timestepNs_);
+  }
+
+  timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  // we are late.
+  if(timespecSmallerThan(&sleepEnd_, &now)){
       rateTooLowCounter_++;
+
+    // prevent the creation of a too low update step
+    addNsecsToTimespec(&lastWakeup_, static_cast<long int>(configuration_.rateCompensationCoefficient*timestepNs_));
+    // we need to sleep a bit
+    if(timespecSmallerThan(&now, &lastWakeup_)){
+      if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
+        MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
+      }
+      highPrecisionSleep(lastWakeup_);
+      clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+
+    // We do not violate the minimum time step
+    } else {
+      if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
+        MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
+      }
+      clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
     }
-  }
-  if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
+    return;
+
+  // we are on time
+  } else {
     rateTooLowCounter_ = 0;
-    MELO_WARN("[ethercat_sdk_master:EthercatMaster::update] processing took too long.");
+    highPrecisionSleep(sleepEnd_);
+    clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
   }
-  lastWakeupTime_ = high_resolution_clock::now();
 }
 
 } // namespace ecat_master
