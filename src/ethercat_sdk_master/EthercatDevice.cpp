@@ -120,7 +120,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, int8_t& value) {
   bool success = sendSdoReadInt8(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int8_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int8_t");
   }
   return success;
 }
@@ -129,7 +129,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, int16_t& value) {
   bool success = sendSdoReadInt16(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int16_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int16_t");
   }
   return success;
 }
@@ -138,7 +138,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, int32_t& value) {
   bool success = sendSdoReadInt32(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int32_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int32_t");
   }
   return success;
 }
@@ -147,7 +147,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, int64_t& value) {
   bool success = sendSdoReadInt64(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int64_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: int64_t");
   }
   return success;
 }
@@ -156,7 +156,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, uint8_t& value) {
   bool success = sendSdoReadUInt8(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint8_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint8_t");
   }
   return success;
 }
@@ -165,7 +165,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, uint16_t& value) {
   bool success = sendSdoReadUInt16(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint16_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint16_t");
   }
   return success;
 }
@@ -174,7 +174,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, uint32_t& value) {
   bool success = sendSdoReadUInt32(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint32_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint32_t");
   }
   return success;
 }
@@ -183,7 +183,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, uint64_t& value) {
   bool success = sendSdoReadUInt64(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint64_t");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: uint64_t");
   }
   return success;
 }
@@ -192,7 +192,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, float& value) {
   bool success = sendSdoReadFloat(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: float");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: float");
   }
   return success;
 }
@@ -201,7 +201,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, double& value) {
   bool success = sendSdoReadDouble(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: double");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: double");
   }
   return success;
 }
@@ -210,7 +210,7 @@ template <>
 bool EthercatDevice::sendSdoRead(const uint16_t index, const uint8_t subindex, const bool completeAccess, std::string& value) {
   bool success = sendSdoReadString(index, subindex, completeAccess, value);
   if (!success) {
-    MELO_ERROR_STREAM("Error writing SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: std::string");
+    MELO_ERROR_STREAM("Error reading SDO.\nIndex: " << (int)index << "\nSubindex: " << (int)subindex << "\n Complete Access: " << (int)completeAccess << "\nType: std::string");
   }
   return success;
 }
