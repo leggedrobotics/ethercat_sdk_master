@@ -26,7 +26,6 @@ namespace ecat_master {
  * Abstract class for EtherCAT devices compatible with the EthercatMaster.
  * EthercatDevice is derived from soem_interface.:EthercatSlaveBase.
  * The following functions must therefore also be implemented for every new device class:
- * - std::string getName() const;
  * - bool startup();
  * - void updateRead();
  * - void updateWrite();
@@ -68,14 +67,14 @@ public:
    */
   virtual std::string getName() const override {return name_;}
 
-
-
-public:
   /*!
    * Set the name of the device.
    * @param[in] name Name of device.
    */
-  void setName(std::string name) {name_ = name;}
+  virtual void setName(const std::string& name) {name_ = name;}
+
+
+public:
 
   /*!
    * Send a write SDO of type Value to the device.
