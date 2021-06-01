@@ -44,7 +44,7 @@ public:
     class EthercatActuatorDeviceCommand
     {
     public:
-        EthercatActuatorDeviceControlMode mode = EthercatActuatorDeviceControlMode::None;
+        uint32_t mode = static_cast<uint32_t>(EthercatActuatorDeviceControlMode::None);
         double currentQdes = 0; //A
         double motorVelocityDes = 0; //rad/s
         double motorPositionDes = 0; //rad
