@@ -50,9 +50,23 @@ public:
         double motorPositionDes = 0; //rad
     };
 
-    virtual EthercatActuatorDeviceReading getLatestReading() const = 0;
+    /**
+     * @brief getLatestReading
+     * @return The reading from the last update step
+     */
+    virtual std::shared_ptr<EthercatActuatorDeviceReading> getLatestReading() const = 0;
+    /**
+     * @brief setCommand - The command to be sent in the next update step
+     * @param command
+     * @return true in case of success
+     */
     virtual bool setCommand(const EthercatActuatorDeviceCommand& command) = 0;
 
+    /**
+     * @brief getAvailableReadingFields
+     * @return vector of pairs that contain the name + a getter function in order to access a certain field in
+     */
+    virtual std::vector<std::pair<std::string, std::function<double(void)>>> getAvailableReadingFields(std::shared_ptr<EthercatActuatorDeviceReading> _reading) = 0;
 
 };
 }
