@@ -60,13 +60,14 @@ public:
      * @param command
      * @return true in case of success
      */
-    virtual bool setCommand(const EthercatActuatorDeviceCommand& command) = 0;
+    virtual bool setCommand(const std::shared_ptr<EthercatActuatorDeviceCommand>& command) = 0;
 
     /**
      * @brief getAvailableReadingFields
      * @return vector of pairs that contain the name + a getter function in order to access a certain field in
      */
     virtual std::vector<std::pair<std::string, std::function<double(void)>>> getAvailableReadingFields(std::shared_ptr<EthercatActuatorDeviceReading> _reading) = 0;
+    virtual std::vector<std::pair<std::string, std::function<void(double)>>> getAvailableCommandFields(std::shared_ptr<EthercatActuatorDeviceCommand> _command) = 0;
 
 };
 }
