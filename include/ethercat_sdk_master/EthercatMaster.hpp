@@ -129,9 +129,11 @@ public:
    * scheduling parameters (/etc/security/limits.conf, man limits.conf)
    * @param[in] priority Prioirity of the calling thread.
    * Default: 99, Range on most systems: 1 - 99
+   * @param[in] cpu_core. Allows locking the thread to a certain cpu core to avoid the thread hopping
+   * from core to core. Default -1: Dont attach to any core. Has to be < than number of avaible cores
    * @return True if successful
    */
-  bool setRealtimePriority(int priority = 99);
+  bool setRealtimePriority(int priority = 99, int cpu_core = -1);
 
   /*!
    * Resets the update rate scheduler (heartbeat reset).

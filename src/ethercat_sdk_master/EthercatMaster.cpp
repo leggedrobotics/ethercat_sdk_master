@@ -118,12 +118,14 @@ bool EthercatMaster::deviceExists(const std::string& name){
   return false;
 }
 
-bool EthercatMaster::setRealtimePriority(int priority){
+bool EthercatMaster::setRealtimePriority(int priority, int cpu_core){
   bool success = true;
-
+  //Handle to our thread
+  pthread_t thread = pthread_self();
+  //First set the priority of the thread in the scheduler to the passed priority (99 is max)
   sched_param param;
   param.sched_priority = priority;
-  int errorFlag = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+  int errorFlag = pthread_setschedparam(thread, SCHED_FIFO, &param);
   if(errorFlag != 0){
     MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]"
                       << " Could not set thread priority. Check limits.conf or"
@@ -131,28 +133,36 @@ bool EthercatMaster::setRealtimePriority(int priority){
     success &= false;
   }
 
-
+  //Allow attaching the thread to a certain cpu core
+  //Create an empty cpu set for the scheduler
   cpu_set_t cpuset;
-  pthread_t thread = pthread_self();
-
   CPU_ZERO(&cpuset);
-
+  //Obtain amount of cpus
   int number_of_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-  if(number_of_cpus > 1)
+
+  //In case the user passed a core value > 0
+  if(cpu_core > 0 )
   {
-    CPU_SET(1, &cpuset);
-    errorFlag = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset);
-    if(errorFlag != 0)
-    {
-        MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]" <<
+      //check if the core is < than the number of available cpus
+      if(cpu_core > number_of_cpus)
+      {
+          MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]" <<
+                            "Tried to attach thread to core: " << cpu_core << " even though we only have: " << number_of_cpus  << " core!");
+          return false;
+      }
+      //Set the core
+      CPU_SET(cpu_core, &cpuset);
+      //Tell the scheduler our preferences
+      errorFlag = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset);
+      if(errorFlag != 0)
+      {
+          MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]" <<
                           "Could not assign ethercat thread to single cpu core: "
                             << errorFlag);
-        success &= false;
-    }
+          success &= false;
+      }
 
   }
-
-
   return success;
 }
 
