@@ -118,7 +118,7 @@ bool EthercatMaster::deviceExists(const std::string& name){
   return false;
 }
 
-bool EthercatMaster::setRealtimePriority(int priority, int cpu_core){
+bool EthercatMaster::setRealtimePriority(int priority, int cpu_core) const{
   bool success = true;
   //Handle to our thread
   pthread_t thread = pthread_self();

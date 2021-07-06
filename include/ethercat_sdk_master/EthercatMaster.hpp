@@ -133,7 +133,7 @@ public:
    * from core to core. Default -1: Dont attach to any core. Has to be < than number of avaible cores
    * @return True if successful
    */
-  bool setRealtimePriority(int priority = 99, int cpu_core = -1);
+  bool setRealtimePriority(int priority = 99, int cpu_core = -1) const;
 
   /*!
    * Resets the update rate scheduler (heartbeat reset).
