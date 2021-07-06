@@ -144,7 +144,7 @@ bool EthercatMaster::setRealtimePriority(int priority, int cpu_core) const{
   if(cpu_core > 0 )
   {
       //check if the core is < than the number of available cpus
-      if(cpu_core > number_of_cpus)
+      if(cpu_core >= number_of_cpus)
       {
           MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]" <<
                             "Tried to attach thread to core: " << cpu_core << " even though we only have: " << number_of_cpus  << " core!");
