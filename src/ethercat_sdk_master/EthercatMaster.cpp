@@ -119,6 +119,8 @@ bool EthercatMaster::deviceExists(const std::string& name){
 }
 
 bool EthercatMaster::setRealtimePriority(int priority){
+  bool success = true;
+
   sched_param param;
   param.sched_priority = priority;
   int errorFlag = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
@@ -126,9 +128,32 @@ bool EthercatMaster::setRealtimePriority(int priority){
     MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]"
                       << " Could not set thread priority. Check limits.conf or"
                       << " execute as root");
-    return false;
+    success &= false;
   }
-  return true;
+
+
+  cpu_set_t cpuset;
+  pthread_t thread = pthread_self();
+
+  CPU_ZERO(&cpuset);
+
+  int number_of_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+  if(number_of_cpus > 1)
+  {
+    CPU_SET(1, &cpuset);
+    errorFlag = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset);
+    if(errorFlag != 0)
+    {
+        MELO_ERROR_STREAM("[ethercat_sdk_master:EthercatMaster::setRealtimePriority]" <<
+                          "Could not assign ethercat thread to single cpu core: "
+                            << errorFlag);
+        success &= false;
+    }
+
+  }
+
+
+  return success;
 }
 
 
