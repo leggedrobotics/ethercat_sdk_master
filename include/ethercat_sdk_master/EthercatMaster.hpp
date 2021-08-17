@@ -25,6 +25,8 @@
 #include <chrono>
 #include <ctime>
 
+#define LOG_LENGTH 500000
+
 namespace ecat_master{
 
 /*!
@@ -37,9 +39,11 @@ namespace ecat_master{
  */
 class EthercatMaster {
 public:
+  using clock = std::chrono::high_resolution_clock;
+  using timepoint = std::chrono::time_point<clock>;
   typedef std::shared_ptr<EthercatMaster> SharedPtr;
 public:
-  EthercatMaster() = default;
+  EthercatMaster();
 
   /*!
    * Initialize the soem_interface::EthercatBusBase bus_ object.
@@ -146,6 +150,9 @@ public:
    */
   void resetUpdateScheduler() { firstUpdate_ = true; }
 
+  void setSartingTime(timepoint tp) { starting_time = tp; }
+  void saveLogs(const std::string& filename);
+
 protected:
   std::unique_ptr<soem_interface::EthercatBusBase> bus_{nullptr};
   std::vector<EthercatDevice::SharedPtr> devices_;
@@ -170,6 +177,10 @@ protected:
    *   Every timestep is kept as close to the desired value as possible.
    */
   void createUpdateHeartbeat(bool enforceRate);
+
+  std::vector<std::array<timepoint, 2>> update_times;
+  timepoint starting_time;
+    unsigned int nmb_logs {0};
 
 };
 } // namespace ecat_master

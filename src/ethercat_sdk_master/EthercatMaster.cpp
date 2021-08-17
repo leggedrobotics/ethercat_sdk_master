@@ -17,8 +17,9 @@
 #include <thread>
 #include <pthread.h>
 #include <cmath>
+#include <fstream>
 
-#define SLEEP_EARLY_STOP_NS (50000) // less than 1e9 - 1!!
+#define SLEEP_EARLY_STOP_NS (5000) // less than 1e9 - 1!!
 #define BILLION (1000000000)
 
 namespace ecat_master{
@@ -78,7 +79,7 @@ bool EthercatMaster::startup(){
 
 void EthercatMaster::update(UpdateMode updateMode){
   if(firstUpdate_){
-    clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+    clock_gettime(CLOCK_REALTIME, &lastWakeup_);
     sleepEnd_ = lastWakeup_;
     firstUpdate_ = false;
   }
@@ -183,12 +184,12 @@ inline void highPrecisionSleep(timespec ts){
     ts.tv_nsec += BILLION - SLEEP_EARLY_STOP_NS;
     ts.tv_sec -= 1;
   }
-  clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+  clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &ts, nullptr);
 
   // busy waiting for the remaining time
   timespec now;
   do {
-    clock_gettime(CLOCK_MONOTONIC, &now);
+    clock_gettime(CLOCK_REALTIME, &now);
   } while(timespecSmallerThan(&now, &ts));
 }
 
@@ -208,6 +209,8 @@ inline long int getTimeDiffNs(timespec t_end, timespec t_start){
 }
 
 void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
+  timepoint t_in, t_out;
+  t_in = clock::now();
   if(enforceRate){
     // since we do sleep in absolute times keeping the rate constant is trivial:
     // we simply increment the target sleep wakeup time by the timestep in every
@@ -220,7 +223,7 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
   }
 
   timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
+  clock_gettime(CLOCK_REALTIME, &now);
 
   // we are late.
   if(timespecSmallerThan(&sleepEnd_, &now)){
@@ -234,14 +237,14 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
         MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
       }
       highPrecisionSleep(lastWakeup_);
-      clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+      clock_gettime(CLOCK_REALTIME, &lastWakeup_);
 
     // We do not violate the minimum time step
     } else {
       if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
         MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
       }
-      clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+      clock_gettime(CLOCK_REALTIME, &lastWakeup_);
     }
     return;
 
@@ -249,8 +252,31 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
   } else {
     rateTooLowCounter_ = 0;
     highPrecisionSleep(sleepEnd_);
-    clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+    clock_gettime(CLOCK_REALTIME, &lastWakeup_);
   }
+  if(nmb_logs++ < LOG_LENGTH) {
+    t_out = clock::now();
+    update_times.push_back({t_in, t_out});
+  }
+}
+
+EthercatMaster::EthercatMaster(){
+  // to avoid any undefined behavior: initialize timepoint
+  starting_time = clock::now();
+  update_times.reserve(LOG_LENGTH);
+}
+
+void EthercatMaster::saveLogs(const std::string &filename){
+  std::ofstream file;
+  file.open(filename);
+  file << "time_in_ns,time_out_ns\n";
+  for(const auto& entry : update_times) {
+    uint64_t t_in, t_out;
+    t_in = std::chrono::duration_cast<std::chrono::nanoseconds>(entry[0] - starting_time).count();
+    t_out = std::chrono::duration_cast<std::chrono::nanoseconds>(entry[1] - starting_time).count();
+    file << t_in << "," << t_out << "\n";
+  }
+  file.close();
 }
 
 } // namespace ecat_master
