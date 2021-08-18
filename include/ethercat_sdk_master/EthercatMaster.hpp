@@ -159,8 +159,9 @@ protected:
   EthercatMasterConfiguration configuration_;
   unsigned int rateTooLowCounter_{0};
 
-  timespec sleepEnd_{0, 0};
-  timespec lastWakeup_{0, 0};
+  timespec lastStart_{0, 0};
+  timespec target_{0, 0};
+  timespec now_{0, 0};
   long int timestepNs_{0};
   bool firstUpdate_{true};
 

@@ -77,26 +77,18 @@ bool EthercatMaster::startup(){
   return success;
 }
 
+
 void EthercatMaster::update(UpdateMode updateMode){
   if(firstUpdate_){
-    clock_gettime(CLOCK_REALTIME, &lastWakeup_);
-    sleepEnd_ = lastWakeup_;
     firstUpdate_ = false;
+    clock_gettime(CLOCK_REALTIME, &target_);
   }
+  else
+    createUpdateHeartbeat(false);
+
+  clock_gettime(CLOCK_REALTIME, &lastStart_);
   bus_->updateWrite();
   bus_->updateRead();
-
-  // create update heartbeat if in standalone mode
-  switch(updateMode){
-    case UpdateMode::StandaloneEnforceRate:
-      createUpdateHeartbeat(true);
-      break;
-    case UpdateMode::StandaloneEnforceStep:
-      createUpdateHeartbeat(false);
-      break;
-    case UpdateMode::NonStandalone:
-      break;
-  }
 }
 
 void EthercatMaster::shutdown(){
@@ -204,56 +196,54 @@ inline void addNsecsToTimespec(timespec *ts, long int ns){
   }
 }
 
+// calculates t_later - t_earlier
+inline timespec timespecDiff(const timespec* t_later, const timespec* t_earlier){
+  timespec t_res;
+  long int diff_s = t_later->tv_sec - t_earlier->tv_sec;
+  long int diff_ns = t_later->tv_nsec - t_earlier->tv_nsec;
+  std::cout << diff_s << " " << diff_ns << std::endl;
+  if(diff_ns < 0) {
+    t_res.tv_sec = diff_s - 1;
+    t_res.tv_nsec = BILLION + diff_ns;
+  } else {
+    t_res.tv_sec = diff_s;
+    t_res.tv_nsec = diff_ns;
+  }
+  return t_res;
+}
+
 inline long int getTimeDiffNs(timespec t_end, timespec t_start){
   return BILLION*(t_end.tv_sec - t_start.tv_sec) + t_end.tv_nsec - t_start.tv_nsec;
 }
 
 void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
+  // time logging
   timepoint t_in, t_out;
   t_in = clock::now();
-  if(enforceRate){
-    // since we do sleep in absolute times keeping the rate constant is trivial:
-    // we simply increment the target sleep wakeup time by the timestep in every
-    // iteration.
-    addNsecsToTimespec(&sleepEnd_, timestepNs_);
-  } else {
-    // sleep until timeStepNs_ nanoseconds from last wakeup time
-    sleepEnd_ = lastWakeup_;
-    addNsecsToTimespec(&sleepEnd_, timestepNs_);
-  }
 
-  timespec now;
-  clock_gettime(CLOCK_REALTIME, &now);
+  addNsecsToTimespec(&target_, timestepNs_);
+  if(enforceRate) {
+    clock_gettime(CLOCK_REALTIME, &now_);
 
-  // we are late.
-  if(timespecSmallerThan(&sleepEnd_, &now)){
-      rateTooLowCounter_++;
+    // we are on time
+    if(timespecSmallerThan(&now_, &target_)) {
+      highPrecisionSleep(target_);
 
-    // prevent the creation of a too low update step
-    addNsecsToTimespec(&lastWakeup_, static_cast<long int>(configuration_.rateCompensationCoefficient*timestepNs_));
-    // we need to sleep a bit
-    if(timespecSmallerThan(&now, &lastWakeup_)){
-      if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
-        MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
-      }
-      highPrecisionSleep(lastWakeup_);
-      clock_gettime(CLOCK_REALTIME, &lastWakeup_);
-
-    // We do not violate the minimum time step
+    // we are lagging behind
     } else {
-      if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
-        MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
-      }
-      clock_gettime(CLOCK_REALTIME, &lastWakeup_);
+      addNsecsToTimespec(
+          &lastStart_,
+          static_cast<long int>(floor(configuration_.rateCompensationCoefficient) * timestepNs_));
+      if(timespecSmallerThan(&now_, &lastStart_))
+        highPrecisionSleep(lastStart_);
     }
-    return;
-
-  // we are on time
   } else {
-    rateTooLowCounter_ = 0;
-    highPrecisionSleep(sleepEnd_);
-    clock_gettime(CLOCK_REALTIME, &lastWakeup_);
+    addNsecsToTimespec(&lastStart_, timestepNs_);
+    clock_gettime(CLOCK_REALTIME, &now_);
+    if(timespecSmallerThan(&now_, &lastStart_))
+      highPrecisionSleep(lastStart_);
   }
+
   if(nmb_logs++ < LOG_LENGTH) {
     t_out = clock::now();
     update_times.push_back({t_in, t_out});
