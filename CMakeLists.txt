@@ -27,7 +27,7 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 find_package(ament_cmake REQUIRED)
 find_package(soem_interface)
-find_package(yaml-cpp)
+#find_package(yaml-cpp)
 find_package(Threads)
 
 
@@ -35,28 +35,30 @@ find_package(Threads)
 ###########
 ## Build ##
 ###########
-include_directories(
-  include
-  SYSTEM
-)
 
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/EthercatMaster.cpp
   src/${PROJECT_NAME}/EthercatDevice.cpp
 )
 
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
 ament_target_dependencies(
   ${PROJECT_NAME}
   soem_interface
   Threads
-  yaml-cpp
+  #yaml-cpp
 )
 ament_export_dependencies(
         ament_cmake
         soem_interface
 )
-ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
+ament_export_include_directories(include)
+
 
 #############
 ## Install ##
@@ -72,7 +74,7 @@ install(
 
 install(
   DIRECTORY
-    include/${PROJECT_NAME}/
+    include/${PROJECT_NAME}
   DESTINATION include
 )
 
