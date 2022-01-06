@@ -25,8 +25,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   <maintainer email="nachtigall@mavt.ethz.ch">Lennart Nachtigall</maintainer>
   <url type="website">https://github.com/leggedrobotics/ethercat_sdk_master</url>
   
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>soem_interface</depend>
-
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
