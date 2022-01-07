@@ -25,12 +25,11 @@ set(CMAKE_CXX_STANDARD 17)
 ## Enable all compiler warnings and treat them as errors.
 add_compile_options(-Wall -Wextra -Wpedantic)
 
+set(PACKAGE_DEPENDENCIES ament_cmake soem_interface Threads)
+
 find_package(ament_cmake REQUIRED)
-find_package(soem_interface)
-#find_package(yaml-cpp)
-find_package(Threads)
-
-
+find_package(soem_interface REQUIRED)
+find_package(Threads REQUIRED)
 
 ###########
 ## Build ##
@@ -47,16 +46,9 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(
-  ${PROJECT_NAME}
-  soem_interface
-  Threads
-  #yaml-cpp
-)
-ament_export_dependencies(
-        ament_cmake
-        soem_interface
-)
-ament_export_libraries(${PROJECT_NAME})
+  ${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})
+ament_export_dependencies(${PACKAGE_DEPENDENCIES})
+ament_export_libraries(${PROJECT_NAME}) #Does Threads needs to be exportet?
 ament_export_include_directories(include)
 
 
@@ -73,8 +65,7 @@ install(
 )
 
 install(
-  DIRECTORY
-    include/${PROJECT_NAME}
+  DIRECTORY include/
   DESTINATION include
 )
 
