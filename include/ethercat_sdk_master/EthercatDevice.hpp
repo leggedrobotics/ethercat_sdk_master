@@ -90,7 +90,7 @@ public:
    * @return true if the read value corresponds to the written value.
    */
   template <typename Value>
-  bool sdoVerifyWrite(const uint16_t index, const uint8_t subindex, const bool completeAccess, Value value, float delay = 0) {
+  bool sdoVerifyWrite(const uint16_t index, const uint8_t subindex, const bool completeAccess, Value value, unsigned int delay = 0) {
     Value testVal;
     bool success = true;
     success &= sendSdoWrite(index, subindex, completeAccess, value);

@@ -61,7 +61,7 @@ bool EthercatMaster::attachDevice(EthercatDevice::SharedPtr device){
 bool EthercatMaster::startup(){
   bool success = true;
 
-  success &= bus_->startup(false);
+  success &= bus_->startup(true);
 
   for(const auto & device : devices_)
   {
