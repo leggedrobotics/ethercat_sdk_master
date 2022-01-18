@@ -28,6 +28,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>soem_interface</depend>
+  <depend>message_logger</depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>

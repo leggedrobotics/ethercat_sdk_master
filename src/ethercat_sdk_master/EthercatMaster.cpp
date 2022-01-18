@@ -13,7 +13,7 @@
  */
 
 #include "ethercat_sdk_master/EthercatMaster.hpp"
-
+#include "message_logger/message_logger.hpp"
 #include <thread>
 #include <pthread.h>
 #include <cmath>
