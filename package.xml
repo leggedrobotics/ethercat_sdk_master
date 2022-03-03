@@ -28,5 +28,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>soem_interface</depend>
+  <depend>message_logger</depend>
 
 </package>
