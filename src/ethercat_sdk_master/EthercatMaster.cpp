@@ -204,8 +204,8 @@ inline void addNsecsToTimespec(timespec *ts, long int ns){
   }
 }
 
-inline long int getTimeDiffNs(timespec t_end, timespec t_start){
-  return BILLION*(t_end.tv_sec - t_start.tv_sec) + t_end.tv_nsec - t_start.tv_nsec;
+inline long int getTimeDiffNs(timespec* t_end, timespec* t_start){
+  return BILLION*(t_end->tv_sec - t_start->tv_sec) + t_end->tv_nsec - t_start->tv_nsec;
 }
 
 void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
@@ -226,13 +226,13 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
   // we are late.
   if(timespecSmallerThan(&sleepEnd_, &now)){
       rateTooLowCounter_++;
-
+      accumulatedDelayNs_ = accumulatedDelayNs_ + getTimeDiffNs(&now, &sleepEnd_); //might overflow
     // prevent the creation of a too low update step
     addNsecsToTimespec(&lastWakeup_, static_cast<long int>(configuration_.rateCompensationCoefficient*timestepNs_));
     // we need to sleep a bit
     if(timespecSmallerThan(&now, &lastWakeup_)){
       if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
-        MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
+        MELO_DEBUG_STREAM("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low, accumulated delay: " << accumulatedDelayNs_);
       }
       highPrecisionSleep(lastWakeup_);
       clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
@@ -240,7 +240,7 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
     // We do not violate the minimum time step
     } else {
       if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
-        MELO_WARN("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low.");
+        MELO_DEBUG_STREAM("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low, accumulated delay: " << accumulatedDelayNs_);
       }
       clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
     }
@@ -249,6 +249,7 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
   // we are on time
   } else {
     rateTooLowCounter_ = 0;
+    accumulatedDelayNs_ = 0;
     highPrecisionSleep(sleepEnd_);
     clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
   }
