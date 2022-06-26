@@ -208,20 +208,27 @@ inline long int getTimeDiffNs(timespec* t_end, timespec* t_start){
   return BILLION*(t_end->tv_sec - t_start->tv_sec) + t_end->tv_nsec - t_start->tv_nsec;
 }
 
+long EthercatMaster::getUpdateTimeNs(){
+  std::lock_guard<std::mutex> lock(timeStepMutex_);
+  return timeStepNsMeasured_;
+}
+
 void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
+    timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  
   if(enforceRate){
     // since we do sleep in absolute times keeping the rate constant is trivial:
     // we simply increment the target sleep wakeup time by the timestep in every
     // iteration.
     addNsecsToTimespec(&sleepEnd_, timestepNs_);
-  } else {
+  } 
+  else {
     // sleep until timeStepNs_ nanoseconds from last wakeup time
     sleepEnd_ = lastWakeup_;
-    addNsecsToTimespec(&sleepEnd_, timestepNs_);
+    addNsecsToTimespec(&sleepEnd_timeStepNsMeasured_, timestepNs_);
   }
 
-  timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
 
   // we are late.
   if(timespecSmallerThan(&sleepEnd_, &now)){
@@ -231,28 +238,28 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
     addNsecsToTimespec(&lastWakeup_, static_cast<long int>(configuration_.rateCompensationCoefficient*timestepNs_));
     // we need to sleep a bit
     if(timespecSmallerThan(&now, &lastWakeup_)){
-      if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
-        MELO_DEBUG_STREAM("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low, accumulated delay: " << accumulatedDelayNs_);
-      }
       highPrecisionSleep(lastWakeup_);
-      clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
-
-    // We do not violate the minimum time step
-    } else {
-      if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
-        MELO_DEBUG_STREAM("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low, accumulated delay: " << accumulatedDelayNs_);
-      }
-      clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+    } 
+      
+    if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
+      MELO_DEBUG_STREAM("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low, accumulated delay: " << accumulatedDelayNs_);
     }
-    return;
-
-  // we are on time
-  } else {
+      
+  } 
+  else {
     rateTooLowCounter_ = 0;
     accumulatedDelayNs_ = 0;
     highPrecisionSleep(sleepEnd_);
-    clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
   }
+  timespec measurementTime;
+  clock_gettime(CLOCK_MONOTONIC, &measurementTime);
+  {
+    std::lock_guard<std::mutex> lock(timeStepMutex_);
+    timeStepNsMeasured_ = getTimeDiffNs(&measurementTime, &lastWakeup_); 
+  }
+  clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
+
+
 }
 
 } // namespace ecat_master
