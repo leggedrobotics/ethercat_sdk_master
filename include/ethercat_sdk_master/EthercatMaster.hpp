@@ -93,6 +93,12 @@ public:
   void preShutdown();
 
   /*!
+  * Returns the update time in Ns. Thread safe.
+  *
+  */
+  long getUpdateTimeNs();
+
+  /*!
    * Returns a raw pointer to the bus_ object.
    */
   soem_interface::EthercatBusBase* getBusPtr() { return bus_.get(); }
@@ -156,6 +162,10 @@ protected:
   timespec sleepEnd_{0, 0};
   timespec lastWakeup_{0, 0};
   long int timestepNs_{0};
+  
+  std::mutex timeStepMutex_;
+  long timeStepNsMeasured_{0};
+
   bool firstUpdate_{true};
 
 protected:
