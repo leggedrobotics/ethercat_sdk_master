@@ -21,6 +21,7 @@ project(ethercat_sdk_master)
 #endif()
 
 set(CMAKE_CXX_STANDARD 17)
+add_definitions(-DMELO_USE_COUT)
 
 ## Enable all compiler warnings and treat them as errors.
 add_compile_options(-Wall -Wextra -Wpedantic)
@@ -49,9 +50,9 @@ target_include_directories(${PROJECT_NAME}
 ament_target_dependencies(
   ${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})
 ament_export_dependencies(${PACKAGE_DEPENDENCIES})
-ament_export_libraries(${PROJECT_NAME}) #Does Threads needs to be exportet?
-ament_export_include_directories(include)
 
+ament_export_targets(${PROJECT_NAME}Target) #Does Threads needs to be exportet?
+ament_export_dependencies(${PACKAGE_DEPENDENCIES})
 
 #############
 ## Install ##
