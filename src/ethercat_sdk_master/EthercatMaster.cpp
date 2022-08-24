@@ -62,6 +62,9 @@ bool EthercatMaster::startup(){
   bool success = true;
 
   success &= bus_->startup(true);
+  if(!success){
+    return false;
+  }
 
   for(const auto & device : devices_)
   {
