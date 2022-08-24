@@ -100,14 +100,18 @@ void EthercatMaster::update(UpdateMode updateMode){
 }
 
 void EthercatMaster::shutdown(){
-  bus_->setState(EC_STATE_INIT);
-  bus_->shutdown();
+  if(bus_){
+    bus_->setState(EC_STATE_INIT);
+    bus_->shutdown();
+  }
 }
 
 void EthercatMaster::preShutdown()
 {
    for(auto & device : devices_)
-      device->preShutdown();
+     if(device){
+       device->preShutdown();
+     }
 }
 
 bool EthercatMaster::deviceExists(const std::string& name){
