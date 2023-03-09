@@ -38,7 +38,7 @@ EthercatMasterConfiguration EthercatMaster::getConfiguration()
 }
 
 void EthercatMaster::createEthercatBus(){
-    bus_.reset(new soem_interface::EthercatBusBase(configuration_.networkInterface));
+    bus_.reset(new soem_interface_rsl::EthercatBusBase(configuration_.networkInterface));
 }
 
 bool EthercatMaster::attachDevice(EthercatDevice::SharedPtr device){
