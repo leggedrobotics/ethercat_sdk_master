@@ -13,10 +13,12 @@
  */
 
 #include "ethercat_sdk_master/EthercatMaster.hpp"
-
+#include "message_logger/message_logger.hpp"
 #include <thread>
 #include <pthread.h>
 #include <cmath>
+#include <filesystem>
+#include <cstdint>
 
 #define SLEEP_EARLY_STOP_NS (50000) // less than 1e9 - 1!!
 #define BILLION (1000000000)
@@ -29,6 +31,43 @@ void EthercatMaster::loadEthercatMasterConfiguration(const EthercatMasterConfigu
   configuration_ = configuration;
 
   timestepNs_ = floor(configuration.timeStep * 1e9);
+  if(configuration_.logErrorCounters){
+    auto getFolderSize = [](const std::string& folderPath) -> uintmax_t {
+      std::uintmax_t totalSize = 0;
+
+      for (const auto& entry : std::filesystem::recursive_directory_iterator(folderPath)) {
+        if (std::filesystem::is_regular_file(entry)) {
+          totalSize += std::filesystem::file_size(entry);
+        }
+      }
+      return totalSize;
+    };
+    std::string logFolderName{std::string{std::getenv("HOME")}+"/.ethercat_master/"+configuration_.networkInterface};
+    if(!std::filesystem::exists(logFolderName)){
+      if(std::filesystem::create_directories(logFolderName)){
+        MELO_INFO_STREAM("[EthercatMaster::"<< configuration_.networkInterface << "] Created logging dir: " << logFolderName);
+      }
+    }
+    auto folderSize = getFolderSize(logFolderName);
+    MELO_DEBUG_STREAM("[Ethercatmaster::" << configuration_.networkInterface<<"] Log file in folder ~/.ethercat_master/" << configuration_.networkInterface << ", Foldersize: " << folderSize)
+    if(folderSize >static_cast<uintmax_t>(500*10e6)){
+      MELO_ERROR_STREAM("[Ethercatmaster::" << configuration_.networkInterface<<"] Log file in folder ~/.ethercat_master/" << configuration_.networkInterface << " is larger than 500Mb. consider cleaning up! Foldersize: " << folderSize)
+    }
+
+    auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&currentTime), "%Y-%m-%d_%H:%M:%S");
+
+    std::string logFilename = logFolderName + "/"+ss.str()+".log";
+
+    {
+      std::lock_guard busDiagStreamLock(logFileStreamMutex_);
+      busDiagnosisLogFile_ = std::fstream(logFilename, std::ios::out);
+      if (busDiagnosisLogFile_.is_open()) {
+        MELO_INFO_STREAM("[Ethercatmaster::" << configuration_.networkInterface << "] Writing to logfile: " << logFilename)
+      }
+    }
+  }
   createEthercatBus();
 }
 
@@ -58,7 +97,7 @@ bool EthercatMaster::attachDevice(EthercatDevice::SharedPtr device){
   return true;
 }
 
-bool EthercatMaster::startup(){
+bool EthercatMaster::startup(bool setToOperational){
   bool success = true;
 
   success &= bus_->startup(true);
@@ -68,15 +107,78 @@ bool EthercatMaster::startup(){
 
   for(const auto & device : devices_)
   {
-    if(!bus_->waitForState(EC_STATE_SAFE_OP, device->getAddress(), 50, 0.05)) {
-      MELO_ERROR("not in safe op after satrtup!");
+    if(!bus_->waitForState(EC_STATE_SAFE_OP, device->getAddress(), 50)) {
+      MELO_ERROR_STREAM("[EthercatMaster::" << bus_->getName() << "] not in SAFE_OP after startup!");
     }
-    bus_->setState(EC_STATE_OPERATIONAL, device->getAddress());
-    success &= bus_->waitForState(EC_STATE_OPERATIONAL, device->getAddress(), 50, 0.05);
+  }
+
+  //write the header of the diagnosis log
+  if(configuration_.logErrorCounters){
+    if(busDiagnosisLogFile_){
+      std::lock_guard busDiagStreamLock(logFileStreamMutex_);
+      busDiagnosisLogFile_ << "Time, " << configuration_.networkInterface << ", ";
+      for (size_t slaveCount=0; slaveCount < devices_.size(); slaveCount++) {
+        for(size_t regCount=0; regCount < static_cast<size_t>(soem_interface::REG::ERROR_COUNTERS::SIZE); regCount++){
+          busDiagnosisLogFile_ << devices_[slaveCount]->getName(); //For every error register a column.
+          bool lastElement = (slaveCount == devices_.size()-1) && (regCount==static_cast<size_t>(soem_interface::REG::ERROR_COUNTERS::SIZE)-1);
+          if(!lastElement){
+            busDiagnosisLogFile_ << ", ";
+          }
+        }
+      }
+
+      logStartTime_ = std::chrono::system_clock::now();
+      auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+      std::stringstream ss;
+      ss << std::put_time(std::localtime(&currentTime), "%Y-%m-%d_%H:%M:%S");
+
+      busDiagnosisLogFile_ << "\n" << ss.str();
+      busDiagnosisLogFile_ <<  ", ALStatusCode, "; //DLStatus
+      for (size_t slaveCount=0; slaveCount< devices_.size(); slaveCount++) {
+        for(size_t regCount=0;regCount < static_cast<size_t>(soem_interface::REG::ERROR_COUNTERS::SIZE); regCount++){
+          busDiagnosisLogFile_ << soem_interface::REG::ERROR_COUNTERS_LIST.Registers[regCount].name;
+          bool lastElement = (slaveCount == devices_.size()-1) && (regCount==static_cast<size_t>(soem_interface::REG::ERROR_COUNTERS::SIZE)-1);
+          if(!lastElement){
+            busDiagnosisLogFile_ << ", ";
+          }
+        }
+      }
+      busDiagnosisLogFile_ << std::endl; //this flushes.
+      busDiagnosisLog_.errorCounters_.resize(devices_.size());
+    } else{
+      MELO_ERROR_STREAM("[EthercatMaster::" << bus_->getName()<< "] Could not open/write log file.")
+    }
+  }
+
+  if(setToOperational){
+      bus_->setState(EC_STATE_OPERATIONAL, 0);
+      success &= bus_->waitForState(EC_STATE_OPERATIONAL, 0, 10);
   }
 
   if(!success)
     MELO_ERROR("[ethercat_sdk_master:EthercatMaster::startup] Startup not successful.");
+  return success;
+}
+
+
+bool EthercatMaster::activate() {
+  bool success = true;
+
+  bus_->setState(EC_STATE_OPERATIONAL,0);
+  success &= bus_->waitForState(EC_STATE_OPERATIONAL, 0, 0);
+
+  //will only be used in case internal update timing functionality is used, otherwise no effect.
+  firstUpdate_ = true;
+  return success;
+}
+
+
+bool EthercatMaster::deactivate() {
+  //is there any action on the slaves needed?, the slaves EC SM and Drive SM should take care of it?
+
+  bool success = true;
+    bus_->setState(EC_STATE_SAFE_OP, 0);
+    success &= bus_->waitForState(EC_STATE_SAFE_OP, 0, 0);
   return success;
 }
 
@@ -88,6 +190,40 @@ void EthercatMaster::update(UpdateMode updateMode){
   }
   bus_->updateWrite();
   bus_->updateRead();
+
+  //log
+  if(configuration_.doBusDiagnosis){
+    if(busDiagDecimationCount_ > 200) { //after 100 pdo cycles a 1 diagnosis datagram send, this datagram swaps between error counter or state depending on config.
+      bus_->doBusMonitoring(configuration_.logErrorCounters);
+      if (configuration_.logErrorCounters) {
+        bool diagUpdated = bus_->getBusDiagnosisLog(busDiagnosisLog_);
+        if (diagUpdated) {  // will only be fully after some runs, depends on number of slaves on the bus.
+          MELO_DEBUG_STREAM("[EcatMaster::" << bus_->getName() << "::Update] Writing log to file (or buffer)")
+          //write the error counter to the file:
+          auto currentTime = std::chrono::system_clock::now();
+          auto msSinceStart = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime.time_since_epoch() - logStartTime_.time_since_epoch());
+          std::chrono::seconds secondsSinceStart = std::chrono::duration_cast<std::chrono::seconds>(msSinceStart);
+          std::chrono::milliseconds millisecondsSinceStart = std::chrono::duration_cast<std::chrono::milliseconds>(msSinceStart % std::chrono::seconds(1));
+          std::lock_guard busDiagStreamLock(logFileStreamMutex_);
+          busDiagnosisLogFile_ <<  secondsSinceStart.count() << "." << std::setw(3) << std::setfill('0') << millisecondsSinceStart.count() << ", ";
+          busDiagnosisLogFile_ << busDiagnosisLog_.ecatApplicationLayerStatus << ", ";
+          for (size_t slaveCount=0; slaveCount < busDiagnosisLog_.errorCounters_.size(); slaveCount++) {
+            for(size_t errorRegCount=0;errorRegCount < static_cast<size_t>(soem_interface::REG::ERROR_COUNTERS::SIZE); errorRegCount++){
+              busDiagnosisLogFile_ << busDiagnosisLog_.errorCounters_[slaveCount][errorRegCount].fullValue;
+              bool lastEntry = (slaveCount == busDiagnosisLog_.errorCounters_.size()-1) &&  (errorRegCount == static_cast<size_t>(soem_interface::REG::ERROR_COUNTERS::SIZE)-1);
+              if(!lastEntry){
+                busDiagnosisLogFile_ << ", ";
+              }
+            }
+          }
+          busDiagnosisLogFile_ << std::endl; //flush after every loop.
+        }
+      }
+      busDiagDecimationCount_ = 0;
+    }
+    busDiagDecimationCount_++;
+  }
+  //we should flush here to not leave the function (and therefore the thread
 
   // create update heartbeat if in standalone mode
   switch(updateMode){
@@ -107,14 +243,33 @@ void EthercatMaster::shutdown(){
     bus_->setState(EC_STATE_INIT);
     bus_->shutdown();
   }
+  bus_.reset(nullptr);
 }
 
-void EthercatMaster::preShutdown()
+void EthercatMaster::preShutdown(bool setIntoSafeOP)
 {
-   for(auto & device : devices_)
+   for(auto & device : devices_){
      if(device){
        device->preShutdown();
      }
+   }
+
+   if(setIntoSafeOP) {
+     // immediately fall back to SAFE_OP so that no PDO timeout triggered during shutdown. PDO readings will still be received, slave outputs are active but in "safe" state.
+     // probably vendor dependent what safe state means. after preShutdown slave should be in a state which allows to fallback into EC_STATE_SAFE_OP without triggering any further slave Call
+     bus_->setState(EC_STATE_SAFE_OP, 0);
+     bus_->waitForState(EC_STATE_SAFE_OP, 0);
+   }
+}
+
+EthercatMaster::~EthercatMaster() {
+  //make sure that the bus is shutdown.
+  shutdown();
+  std::lock_guard busDiagStreamLock(logFileStreamMutex_);
+  if(busDiagnosisLogFile_.is_open()){
+    busDiagnosisLogFile_.flush();
+    busDiagnosisLogFile_.close();
+  }
 }
 
 bool EthercatMaster::deviceExists(const std::string& name){
@@ -223,13 +378,13 @@ long EthercatMaster::getUpdateTimeNs(){
 void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
     timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
-  
+
   if(enforceRate){
     // since we do sleep in absolute times keeping the rate constant is trivial:
     // we simply increment the target sleep wakeup time by the timestep in every
     // iteration.
     addNsecsToTimespec(&sleepEnd_, timestepNs_);
-  } 
+  }
   else {
     // sleep until timeStepNs_ nanoseconds from last wakeup time
     sleepEnd_ = lastWakeup_;
@@ -246,13 +401,13 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
     // we need to sleep a bit
     if(timespecSmallerThan(&now, &lastWakeup_)){
       highPrecisionSleep(lastWakeup_);
-    } 
-      
+    }
+
     if(rateTooLowCounter_ >= configuration_.updateRateTooLowWarnThreshold){
       MELO_DEBUG_STREAM("[ethercat_sdk_master:EthercatMaster::createUpdateHeartbeat]: update rate too low, accumulated delay: " << accumulatedDelayNs_);
     }
-      
-  } 
+
+  }
   else {
     rateTooLowCounter_ = 0;
     accumulatedDelayNs_ = 0;
@@ -262,7 +417,7 @@ void EthercatMaster::createUpdateHeartbeat(bool enforceRate){
   clock_gettime(CLOCK_MONOTONIC, &measurementTime);
   {
     std::lock_guard<std::mutex> lock(timeStepMutex_);
-    timeStepNsMeasured_ = getTimeDiffNs(&measurementTime, &lastWakeup_); 
+    timeStepNsMeasured_ = getTimeDiffNs(&measurementTime, &lastWakeup_);
   }
   clock_gettime(CLOCK_MONOTONIC, &lastWakeup_);
 

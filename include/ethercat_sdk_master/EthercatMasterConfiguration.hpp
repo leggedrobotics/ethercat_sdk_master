@@ -24,6 +24,11 @@ namespace ecat_master{
 struct EthercatMasterConfiguration{
 
   /*!
+   * Name your buses with a descriptive name. E.g MyArmBus and MyLegsBus if you use multiple buses.
+   */
+  std::string name{""};
+
+  /*!
    * Network interface name.
    * Use `ip link show` to list available interfaces.
    */
@@ -51,6 +56,19 @@ struct EthercatMasterConfiguration{
    * TODO: needs to be tested further
    */
   double rateCompensationCoefficient{0.5};
+
+
+  /*!
+   * Bus diagnosis, reads the bus state, after a hardcoded amount of PDO update cycles, prints enhanced logs if the Bus is not in OPERATIONAL
+   */
+  bool doBusDiagnosis{false};
+
+
+  /*!
+   * does more bus diagnosis, reads out some error counters after a hardcoded amount of PDO cycles, and logs them to a file found in ~/.ethercat_master/network_interface_name/<datetime>.log
+   */
+  bool logErrorCounters{false};
+
 };
 
 } // namespace ecat_master
