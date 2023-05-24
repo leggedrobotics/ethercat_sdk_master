@@ -20,7 +20,7 @@ if(CCACHE_PROGRAM)
   set(CMAKE_C_COMPILER_LAUNCHER   ${CCACHE_PROGRAM})
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 ## Enable all compiler warnings and treat them as errors.
 add_compile_options(-Wall -Wextra -Wpedantic)
