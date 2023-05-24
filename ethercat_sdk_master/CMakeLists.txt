@@ -26,7 +26,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 set(CATKIN_PACKAGE_DEPENDENCIES
-  soem_interface
+  soem_interface_rsl
   message_logger
 )
 

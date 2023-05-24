@@ -1,2 +1,0 @@
-library 'continuous_integration_pipeline'
-ciPipeline("--dependencies git@bitbucket.org:leggedrobotics/soem_interface.git;refactoring/ethercat_sdk_master")
