@@ -13,12 +13,12 @@
 cmake_minimum_required(VERSION 3.16)
 project(ethercat_sdk_master)
 
-#find_program(CCACHE_PROGRAM ccache)
-#if(CCACHE_PROGRAM)
-#    message(STATUS "Using ccache")
-#  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
-#  set(CMAKE_C_COMPILER_LAUNCHER   ${CCACHE_PROGRAM})
-#endif()
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    message(STATUS "Using ccache")
+  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+  set(CMAKE_C_COMPILER_LAUNCHER   ${CCACHE_PROGRAM})
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 add_definitions(-DMELO_USE_COUT)

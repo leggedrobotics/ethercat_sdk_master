@@ -9,7 +9,7 @@ An example how this package can be found in the 'elmo_ethercat_sdk'
 
 | Repo           | url                                                  | License      | Content                                          |
 |:--------------:|:----------------------------------------------------:|:------------:|:------------------------------------------------:|
-| soem_interface | https://github.com/leggedrobotics/soem_interface.git | GPLv3        | EtherCAT functionalities                         |
+| soem_interface_rsl | https://github.com/leggedrobotics/soem_interface_rsl.git | GPLv3        | EtherCAT functionalities                         |
 | message_logger | https://github.com/leggedrobotics/message_logger.git | BSD 3-Clause | simple log streams                               |
 
 ## System Dependencies (Ubuntu 18.04 LTS)

@@ -26,13 +26,13 @@
 #include "ethercat_sdk_master/EthercatMasterConfiguration.hpp"
 #include "ethercat_sdk_master/UpdateMode.hpp"
 
-#include <soem_interface/EthercatBusBase.hpp>
+#include <soem_interface_rsl/EthercatBusBase.hpp>
 
 #include <chrono>
 #include <ctime>
+#include <fstream>
 #include <memory>
 #include <vector>
-#include <fstream>
 
 namespace ecat_master {
 
@@ -54,7 +54,7 @@ class EthercatMaster {
   ~EthercatMaster();
 
   /*!
-   * Initialize the soem_interface::EthercatBusBase bus_ object.
+   * Initialize the soem_interface_rsl::EthercatBusBase bus_ object.
    */
   void createEthercatBus();
 
@@ -70,8 +70,8 @@ class EthercatMaster {
    * The startup() method of each attached EtherCAT device is called.
    * The devices are then set into the OPERATIONAL EtherCAT state.
    * @param[in] setIntoOperational if true sets all devices on the bus into EtherCAT OPERATIONAL State, default=true.
-   * Note: in EtherCAT OPERATIONAL State the EtherCAT SM/cyclic communication Watchdog is active - if PDO communication is not established within the Watchdogs
-   * time (usually around 100ms), then a Sync manager watchdog is triggered. (AlStatusCode 0x001b)
+   * Note: in EtherCAT OPERATIONAL State the EtherCAT SM/cyclic communication Watchdog is active - if PDO communication is not established
+   * within the Watchdogs time (usually around 100ms), then a Sync manager watchdog is triggered. (AlStatusCode 0x001b)
    * @return true if successful.
    */
   bool startup(bool setIntoOperational = true);
@@ -89,7 +89,8 @@ class EthercatMaster {
    * Deactivates the Bus by setting all Slaves into SAFE_OP State, blocks until state reached for a slaves on the bus.
    * Call only required in special cases e.g. stopping the PDO loop and restarting it.
    * Note: in EtherCAT SAFE_OP Readings of the devices are available, but outputs e.g commands are not set (e.g. on a drive), therefore
-   * device is in safe state. PDO communication can continue as in activated mode. Might trigger state transitions on Special Slave State machine (e.g. CiA402).
+   * device is in safe state. PDO communication can continue as in activated mode. Might trigger state transitions on Special Slave State
+   *machine (e.g. CiA402).
    *@return true if successful.
    */
 
@@ -121,7 +122,8 @@ class EthercatMaster {
    * Pre shutdown communication.
    * Call preShutdown() of every attached device.
    * This function needs to be executed while the cyclic communication (PDO communication) is running.
-   * @param setIntoSafeOP sets the EthercatBus back into SafeOP (same as deactivate call), to not trigger cyclic communication watchdogs on slaves during shutdown.
+   * @param setIntoSafeOP sets the EthercatBus back into SafeOP (same as deactivate call), to not trigger cyclic communication watchdogs on
+   * slaves during shutdown.
    * @see https://bitbucket.org/leggedrobotics/ethercat_device_configurator/src/master/src/standalone.cpp
    */
   void preShutdown(bool setIntoSafeOP = false);
@@ -135,7 +137,7 @@ class EthercatMaster {
   /*!
    * Returns a raw pointer to the bus_ object.
    */
-  soem_interface::EthercatBusBase* getBusPtr() { return bus_.get(); }
+  soem_interface_rsl::EthercatBusBase* getBusPtr() { return bus_.get(); }
 
   // Configuration
  public:
@@ -186,7 +188,7 @@ class EthercatMaster {
   void resetUpdateScheduler() { firstUpdate_ = true; }
 
  protected:
-  std::unique_ptr<soem_interface::EthercatBusBase> bus_{nullptr};
+  std::unique_ptr<soem_interface_rsl::EthercatBusBase> bus_{nullptr};
   std::vector<EthercatDevice::SharedPtr> devices_;
   EthercatMasterConfiguration configuration_{};
   unsigned int rateTooLowCounter_{0};
@@ -199,11 +201,12 @@ class EthercatMaster {
   std::mutex timeStepMutex_;
   long timeStepNsMeasured_{0};
 
-  std::mutex logFileStreamMutex_{}; //only for creation destruction needed, used in different thread, therefore make sure buildup before ecat updadte thread is started.
+  std::mutex logFileStreamMutex_{};  // only for creation destruction needed, used in different thread, therefore make sure buildup before
+                                     // ecat updadte thread is started.
   size_t busDiagDecimationCount_{0};
   std::fstream busDiagnosisLogFile_{nullptr};
   std::chrono::time_point<std::chrono::system_clock> logStartTime_;
-  soem_interface::BusDiagnosisLog busDiagnosisLog_{};
+  soem_interface_rsl::BusDiagnosisLog busDiagnosisLog_{};
 
   bool firstUpdate_{true};
 
