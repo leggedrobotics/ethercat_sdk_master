@@ -112,7 +112,7 @@ bool EthercatMaster::startup(bool setToOperational) {
   }
 
   for (const auto& device : devices_) {
-    if (!bus_->waitForState(EC_STATE_SAFE_OP, device->getAddress(), 50)) {
+    if (!bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP, device->getAddress(), 50)) {
       MELO_ERROR_STREAM("[EthercatMaster::" << bus_->getName() << "] not in SAFE_OP after startup!");
     }
   }
@@ -158,8 +158,8 @@ bool EthercatMaster::startup(bool setToOperational) {
   }
 
   if (setToOperational) {
-    bus_->setState(EC_STATE_OPERATIONAL, 0);
-    success &= bus_->waitForState(EC_STATE_OPERATIONAL, 0, 10);
+    bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::OPERATIONAL);
+    success &= bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::OPERATIONAL, 0, 10);
   }
 
   if (!success) MELO_ERROR("[ethercat_sdk_master:EthercatMaster::startup] Startup not successful.");
@@ -169,8 +169,8 @@ bool EthercatMaster::startup(bool setToOperational) {
 bool EthercatMaster::activate() {
   bool success = true;
 
-  bus_->setState(EC_STATE_OPERATIONAL, 0);
-  success &= bus_->waitForState(EC_STATE_OPERATIONAL, 0, 0);
+  bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::OPERATIONAL);
+  success &= bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::OPERATIONAL, 0, 0);
 
   // will only be used in case internal update timing functionality is used, otherwise no effect.
   firstUpdate_ = true;
@@ -181,8 +181,8 @@ bool EthercatMaster::deactivate() {
   // is there any action on the slaves needed?, the slaves EC SM and Drive SM should take care of it?
 
   bool success = true;
-  bus_->setState(EC_STATE_SAFE_OP, 0);
-  success &= bus_->waitForState(EC_STATE_SAFE_OP, 0, 0);
+  bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
+  success &= bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP, 0, 0);
   return success;
 }
 
@@ -250,7 +250,7 @@ void EthercatMaster::update(UpdateMode updateMode) {
 
 void EthercatMaster::shutdown() {
   if (bus_) {
-    bus_->setState(EC_STATE_INIT);
+    bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::INIT);
     bus_->shutdown();
   }
   bus_.reset(nullptr);
@@ -267,8 +267,8 @@ void EthercatMaster::preShutdown(bool setIntoSafeOP) {
     // immediately fall back to SAFE_OP so that no PDO timeout triggered during shutdown. PDO readings will still be received, slave outputs
     // are active but in "safe" state. probably vendor dependent what safe state means. after preShutdown slave should be in a state which
     // allows to fallback into EC_STATE_SAFE_OP without triggering any further slave Call
-    bus_->setState(EC_STATE_SAFE_OP, 0);
-    bus_->waitForState(EC_STATE_SAFE_OP, 0);
+    bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
+    bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
   }
 }
 
