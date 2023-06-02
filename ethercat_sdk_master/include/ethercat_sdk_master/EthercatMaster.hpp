@@ -68,13 +68,13 @@ class EthercatMaster {
   /*!
    * Start the EtherCAT communication.
    * The startup() method of each attached EtherCAT device is called.
-   * The devices are then set into the OPERATIONAL EtherCAT state.
-   * @param[in] setIntoOperational if true sets all devices on the bus into EtherCAT OPERATIONAL State, default=true.
-   * Note: in EtherCAT OPERATIONAL State the EtherCAT SM/cyclic communication Watchdog is active - if PDO communication is not established
-   * within the Watchdogs time (usually around 100ms), then a Sync manager watchdog is triggered. (AlStatusCode 0x001b)
+   * The devices are then set into the SAFE_OPERATIONAL EtherCAT state.
+   * @param[in] abortFlag allows the abortion of the startup process, since it is blocking till all the slaves are found. (with a hardcoded
+   * timeout)
    * @return true if successful.
    */
-  bool startup(bool setIntoOperational = true);
+  bool startup(std::atomic<bool>& abortFlag);
+  bool startup();
 
   /*!
    * Activates the Bus by setting all Slaves into OPERATIONAL State
@@ -115,6 +115,8 @@ class EthercatMaster {
   /*!
    * Shutdown the communication.
    * EtherCAT communication is not possible after calling shutdown.
+   * Note: This releases the bus resources!! any later call to the bus via devices will segfault! all slaves and threads needs to be
+   * properly shutdown/joined before calling this!
    */
   void shutdown();
 
