@@ -103,10 +103,10 @@ bool EthercatMaster::attachDevice(EthercatDevice::SharedPtr device) {
   return true;
 }
 
-bool EthercatMaster::startup(bool setToOperational) {
+bool EthercatMaster::startup(std::atomic<bool>& abortFlag) {
   bool success = true;
 
-  success &= bus_->startup(true);
+  success &= bus_->startup(abortFlag, configuration_.pdoSizeCheck, configuration_.slaveDiscoverRetries);
   if (!success) {
     return false;
   }
@@ -157,13 +157,13 @@ bool EthercatMaster::startup(bool setToOperational) {
     }
   }
 
-  if (setToOperational) {
-    bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::OPERATIONAL);
-    success &= bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::OPERATIONAL, 0, 10);
-  }
-
   if (!success) MELO_ERROR("[ethercat_sdk_master:EthercatMaster::startup] Startup not successful.");
   return success;
+}
+
+bool EthercatMaster::startup() {
+  std::atomic<bool> tmpFlag{false};
+  return startup(tmpFlag);
 }
 
 bool EthercatMaster::activate() {
@@ -257,18 +257,24 @@ void EthercatMaster::shutdown() {
 }
 
 void EthercatMaster::preShutdown(bool setIntoSafeOP) {
-  for (auto& device : devices_) {
-    if (device) {
-      device->preShutdown();
+  if (bus_) {  // check if the bus is not shutdown already..
+    for (auto& device : devices_) {
+      if (device) {
+        device->preShutdown();
+        MELO_DEBUG_STREAM("Test test")
+      }
     }
-  }
 
-  if (setIntoSafeOP) {
-    // immediately fall back to SAFE_OP so that no PDO timeout triggered during shutdown. PDO readings will still be received, slave outputs
-    // are active but in "safe" state. probably vendor dependent what safe state means. after preShutdown slave should be in a state which
-    // allows to fallback into EC_STATE_SAFE_OP without triggering any further slave Call
-    bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
-    bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
+    MELO_DEBUG_STREAM("Test test test")
+
+    if (setIntoSafeOP) {
+      MELO_DEBUG_STREAM("[EthercatMaster::" << bus_->getName() << "] Trying to deavtivete the bus")
+      // immediately fall back to SAFE_OP so that no PDO timeout triggered during shutdown. PDO readings will still be received, slave
+      // outputs are active but in "safe" state. probably vendor dependent what safe state means. after preShutdown slave should be in a
+      // state which allows to fallback into EC_STATE_SAFE_OP without triggering any further slave Call
+      bus_->setState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
+      bus_->waitForState(soem_interface_rsl::ETHERCAT_SM_STATE::SAFE_OP);
+    }
   }
 }
 
