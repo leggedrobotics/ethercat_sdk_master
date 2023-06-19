@@ -47,7 +47,6 @@ class EthercatDevice : public soem_interface_rsl::EthercatSlaveBase {
   typedef std::shared_ptr<EthercatDevice> SharedPtr;
 
  public:
- public:
   /*!
    * Set the update time step.
    * This value needs to correspond to the target time step used in the update
