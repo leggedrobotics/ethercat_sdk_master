@@ -26,10 +26,10 @@ add_definitions(-DMELO_USE_COUT)
 ## Enable all compiler warnings and treat them as errors.
 add_compile_options(-Wall -Wextra -Wpedantic)
 
-set(PACKAGE_DEPENDENCIES ament_cmake soem_interface message_logger Threads)
+set(PACKAGE_DEPENDENCIES ament_cmake soem_interface_rsl message_logger Threads)
 
 find_package(ament_cmake REQUIRED)
-find_package(soem_interface REQUIRED)
+find_package(soem_interface_rsl REQUIRED)
 find_package(message_logger REQUIRED)
 find_package(Threads REQUIRED)
 
