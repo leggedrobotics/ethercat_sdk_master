@@ -261,11 +261,8 @@ void EthercatMaster::preShutdown(bool setIntoSafeOP) {
     for (auto& device : devices_) {
       if (device) {
         device->preShutdown();
-        MELO_DEBUG_STREAM("Test test")
       }
     }
-
-    MELO_DEBUG_STREAM("Test test test")
 
     if (setIntoSafeOP) {
       MELO_DEBUG_STREAM("[EthercatMaster::" << bus_->getName() << "] Trying to deavtivete the bus")
