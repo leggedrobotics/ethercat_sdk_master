@@ -40,6 +40,7 @@ find_package(Threads REQUIRED)
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/EthercatMaster.cpp
   src/${PROJECT_NAME}/EthercatDevice.cpp
+  src/${PROJECT_NAME}/EthercatMasterSingleton.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
