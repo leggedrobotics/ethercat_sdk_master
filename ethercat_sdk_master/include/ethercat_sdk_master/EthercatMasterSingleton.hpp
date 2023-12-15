@@ -23,6 +23,7 @@ namespace ecat_master {
 
                 if(config != ecat_masters_[config.networkInterface]->getConfiguration()){
                     //Print warning or abort if the configuration does not match!
+                    MELO_WARN_STREAM("Ethercat master configurations do not match for bus: " << config.networkInterface);
                 }
 
                 return ecat_masters_[config.networkInterface];
