@@ -60,6 +60,7 @@ namespace ecat_master {
             }
         }
         void spin(std::shared_ptr<EthercatMaster> master_){
+            master_->setRealtimePriority(); 
             while(!abort_){
                 master_->update(UpdateMode::StandaloneEnforceRate);
             }
