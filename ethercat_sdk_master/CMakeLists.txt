@@ -40,6 +40,7 @@ find_package(Threads REQUIRED)
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/EthercatMaster.cpp
   src/${PROJECT_NAME}/EthercatDevice.cpp
+  src/${PROJECT_NAME}/EthercatMasterSingleton.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -47,12 +48,13 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
+target_compile_options(${PROJECT_NAME} PUBLIC -fPIC)
+
 ament_target_dependencies(
     ${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})
 ament_export_dependencies(${PACKAGE_DEPENDENCIES})
 
 ament_export_targets(${PROJECT_NAME}Target) #Does Threads needs to be exportet?
-ament_export_dependencies(${PACKAGE_DEPENDENCIES})
 
 #############
 ## Install ##
