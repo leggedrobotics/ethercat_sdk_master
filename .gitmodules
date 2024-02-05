@@ -1,0 +1,3 @@
+[submodule "ethercat_sdk_master/rt_tools/farbot"]
+	path = ethercat_sdk_master/rt_tools/farbot
+	url = git@github.com:hogliux/farbot.git

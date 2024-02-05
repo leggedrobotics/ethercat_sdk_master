@@ -71,4 +71,7 @@ install(
   DESTINATION include
 )
 
+install(DIRECTORY rt_tools/farbot/include/
+            DESTINATION include/ethercat_sdk_master)
+
 ament_package()
