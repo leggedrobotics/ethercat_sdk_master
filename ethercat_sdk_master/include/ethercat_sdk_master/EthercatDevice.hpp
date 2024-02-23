@@ -1,32 +1,40 @@
 /*
  ** Copyright 2020 Robotic Systems Lab - ETH Zurich:
  ** Lennart Nachtigall, Jonas Junger
- ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions
+ *are met:
  **
  ** 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
  **
- ** 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ ** 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the
+ *documentation and/or other materials provided with the distribution.
  **
- ** 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ ** 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from
+ *this software without specific prior written permission.
  **
- ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ *ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+ *USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
 
-#include <soem_interface/EthercatBusBase.hpp>
-#include <soem_interface/EthercatSlaveBase.hpp>
+#include <soem_interface_rsl/EthercatBusBase.hpp>
+#include <soem_interface_rsl/EthercatSlaveBase.hpp>
 
-#include <string>
+#include <chrono>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <thread>
-#include <chrono>
 namespace ecat_master {
 
 /*!
  * Abstract class for EtherCAT devices compatible with the EthercatMaster.
- * EthercatDevice is derived from soem_interface.:EthercatSlaveBase.
+ * EthercatDevice is derived from soem_interface_rsl.:EthercatSlaveBase.
  * The following functions must therefore also be implemented for every new device class:
  * - bool startup();
  * - void updateRead();
@@ -34,13 +42,11 @@ namespace ecat_master {
  * - void shutdown();
  * - PdoInfo getCurrentPdoInfo() const;
  */
-class EthercatDevice : public soem_interface::EthercatSlaveBase{
-public:
+class EthercatDevice : public soem_interface_rsl::EthercatSlaveBase {
+ public:
   typedef std::shared_ptr<EthercatDevice> SharedPtr;
-public:
 
-public:
-
+ public:
   /*!
    * Set the update time step.
    * This value needs to correspond to the target time step used in the update
@@ -62,22 +68,20 @@ public:
    * This function should only return once the desired state of the drive has been reached.
    * Look at the AnydriveEthercatSlave class in the anydrive_sdk for an example.
    */
-  virtual void preShutdown() {};
+  virtual void preShutdown(){};
 
   /*!
    * Return the name of this device.
    */
-  virtual std::string getName() const override {return name_;}
+  virtual std::string getName() const override { return name_; }
 
   /*!
    * Set the name of the device.
    * @param[in] name Name of device.
    */
-  virtual void setName(const std::string& name) {name_ = name;}
+  virtual void setName(const std::string& name) { name_ = name; }
 
-
-public:
-
+ public:
   /*!
    * Send a write SDO of type Value to the device and confirm by reading
    * the same value afterwards.
@@ -90,7 +94,7 @@ public:
    * @return true if the read value corresponds to the written value.
    */
   template <typename Value>
-  bool sdoVerifyWrite(const uint16_t index, const uint8_t subindex, const bool completeAccess, Value value, float delay = 0) {
+  bool sdoVerifyWrite(const uint16_t index, const uint8_t subindex, const bool completeAccess, Value value, unsigned int delay = 0) {
     Value testVal;
     bool success = true;
     success &= sendSdoWrite(index, subindex, completeAccess, value);
@@ -99,9 +103,9 @@ public:
     return (success & (value == testVal));
   }
 
-protected:
+ protected:
   std::string name_;
   double timeStep_{0.0};
 };
 
-} // namespace ecat_master
+}  // namespace ecat_master

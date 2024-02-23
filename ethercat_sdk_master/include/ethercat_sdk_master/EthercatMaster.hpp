@@ -1,15 +1,23 @@
 /*
  ** Copyright 2020 Robotic Systems Lab - ETH Zurich:
  ** Lennart Nachtigall, Jonas Junger
- ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions
+ *are met:
  **
  ** 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
  **
- ** 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ ** 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the
+ *documentation and/or other materials provided with the distribution.
  **
- ** 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ ** 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from
+ *this software without specific prior written permission.
  **
- ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ *ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+ *USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
@@ -18,14 +26,15 @@
 #include "ethercat_sdk_master/EthercatMasterConfiguration.hpp"
 #include "ethercat_sdk_master/UpdateMode.hpp"
 
-#include <soem_interface/EthercatBusBase.hpp>
+#include <soem_interface_rsl/EthercatBusBase.hpp>
 
-#include <memory>
-#include <vector>
 #include <chrono>
 #include <ctime>
+#include <fstream>
+#include <memory>
+#include <vector>
 
-namespace ecat_master{
+namespace ecat_master {
 
 /*!
  * Ethercat Master Class.
@@ -36,13 +45,16 @@ namespace ecat_master{
  * - Shutdown the communication
  */
 class EthercatMaster {
-public:
+ public:
   typedef std::shared_ptr<EthercatMaster> SharedPtr;
-public:
+
+ public:
   EthercatMaster() = default;
 
+  ~EthercatMaster();
+
   /*!
-   * Initialize the soem_interface::EthercatBusBase bus_ object.
+   * Initialize the soem_interface_rsl::EthercatBusBase bus_ object.
    */
   void createEthercatBus();
 
@@ -56,10 +68,33 @@ public:
   /*!
    * Start the EtherCAT communication.
    * The startup() method of each attached EtherCAT device is called.
-   * The devices are then set into the OPERATIONAL EtherCAT state.
+   * The devices are then set into the SAFE_OPERATIONAL EtherCAT state.
+   * @param[in] abortFlag allows the abortion of the startup process, since it is blocking till all the slaves are found. (with a hardcoded
+   * timeout)
    * @return true if successful.
    */
+  bool startup(std::atomic<bool>& abortFlag);
   bool startup();
+
+  /*!
+   * Activates the Bus by setting all Slaves into OPERATIONAL State
+   * Note: in EtherCAT OPERATIONAL State the EtherCAT SM Watchdog is active - if PDO communication is not established within the Watchdogs
+   * time (usually around 100ms), then a Sync manager watchdog is triggered. (AlStatusCode 0x001b)
+   *@return true if successful.
+   */
+
+  bool activate();
+
+  /*!
+   * Deactivates the Bus by setting all Slaves into SAFE_OP State, blocks until state reached for a slaves on the bus.
+   * Call only required in special cases e.g. stopping the PDO loop and restarting it.
+   * Note: in EtherCAT SAFE_OP Readings of the devices are available, but outputs e.g commands are not set (e.g. on a drive), therefore
+   * device is in safe state. PDO communication can continue as in activated mode. Might trigger state transitions on Special Slave State
+   *machine (e.g. CiA402).
+   *@return true if successful.
+   */
+
+  bool deactivate();
 
   /*!
    * Update the PDO communication.
@@ -80,27 +115,34 @@ public:
   /*!
    * Shutdown the communication.
    * EtherCAT communication is not possible after calling shutdown.
+   * Note: This releases the bus resources!! any later call to the bus via devices will segfault! all slaves and threads needs to be
+   * properly shutdown/joined before calling this!
    */
   void shutdown();
 
   /*!
    * Pre shutdown communication.
    * Call preShutdown() of every attached device.
-   * This function needs to be executed outside of the communicatino update thread.
-   * PDO communication needs to continue until this funtion returns.
+   * This function needs to be executed while the cyclic communication (PDO communication) is running.
+   * @param setIntoSafeOP sets the EthercatBus back into SafeOP (same as deactivate call), to not trigger cyclic communication watchdogs on
+   * slaves during shutdown.
    * @see https://bitbucket.org/leggedrobotics/ethercat_device_configurator/src/master/src/standalone.cpp
    */
-  void preShutdown();
+  void preShutdown(bool setIntoSafeOP = false);
+
+  /*!
+   * Returns the update time in Ns. Thread safe.
+   *
+   */
+  long getUpdateTimeNs();
 
   /*!
    * Returns a raw pointer to the bus_ object.
    */
-  soem_interface::EthercatBusBase* getBusPtr() { return bus_.get(); }
+  soem_interface_rsl::EthercatBusBase* getBusPtr() { return bus_.get(); }
 
-
-// Configuration
-public:
-
+  // Configuration
+ public:
   /*!
    * Load a configuration.
    * @param[in] configuration EthercatMasterConfiguration.
@@ -119,7 +161,8 @@ public:
    * - SCHED_FIFO
    * - Priority: priority (higher number means higher priority);
    *   Check `chrt -m` to see the max number for your system.
-   *   Default: 90, works good on most modern machines
+   *   Default: 90, works good
+   *   on most modern machines
    * @warning This function needs to be called from within the thread executing
    * the communication update. If handle threads externally then a call to this
    * function can be omitted.
@@ -146,18 +189,30 @@ public:
    */
   void resetUpdateScheduler() { firstUpdate_ = true; }
 
-protected:
-  std::unique_ptr<soem_interface::EthercatBusBase> bus_{nullptr};
+ protected:
+  std::unique_ptr<soem_interface_rsl::EthercatBusBase> bus_{nullptr};
   std::vector<EthercatDevice::SharedPtr> devices_;
-  EthercatMasterConfiguration configuration_;
+  EthercatMasterConfiguration configuration_{};
   unsigned int rateTooLowCounter_{0};
+  long accumulatedDelayNs_{0};
 
   timespec sleepEnd_{0, 0};
   timespec lastWakeup_{0, 0};
   long int timestepNs_{0};
+
+  std::mutex timeStepMutex_;
+  long timeStepNsMeasured_{0};
+
+  std::mutex logFileStreamMutex_{};  // only for creation destruction needed, used in different thread, therefore make sure buildup before
+                                     // ecat updadte thread is started.
+  size_t busDiagDecimationCount_{0};
+  std::fstream busDiagnosisLogFile_{nullptr};
+  std::chrono::time_point<std::chrono::system_clock> logStartTime_;
+  soem_interface_rsl::BusDiagnosisLog busDiagnosisLog_{};
+
   bool firstUpdate_{true};
 
-protected:
+ protected:
   bool deviceExists(const std::string& name);
 
   /*!
@@ -170,6 +225,5 @@ protected:
    *   Every timestep is kept as close to the desired value as possible.
    */
   void createUpdateHeartbeat(bool enforceRate);
-
 };
-} // namespace ecat_master
+}  // namespace ecat_master

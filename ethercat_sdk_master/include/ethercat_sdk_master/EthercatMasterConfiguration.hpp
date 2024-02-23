@@ -24,6 +24,11 @@ namespace ecat_master{
 struct EthercatMasterConfiguration{
 
   /*!
+   * Name your buses with a descriptive name. E.g MyArmBus and MyLegsBus if you use multiple buses.
+   */
+  std::string name{""};
+
+  /*!
    * Network interface name.
    * Use `ip link show` to list available interfaces.
    */
@@ -42,6 +47,17 @@ struct EthercatMasterConfiguration{
    *   A warning is printed if updateRateTooLowWarnThreshold consecutive updates
    *   took too long.
    */
+
+  /*!checks if the pdo size read from the slaves, matches the hardcoded one in the slave sdks.
+   * if dynamic PDO mapping is used this check will fail and can therefore be disabled. e.g. Maxon
+   */
+  bool pdoSizeCheck{false};
+
+  /*!max retires during slave discover on the bus (waiting 1 sec after every try). some slaves might take a bit till started..
+   *can be interrupted if startupAbortFlag is nicley wired thru everything.
+   */
+  unsigned int slaveDiscoverRetries{10};
+
   unsigned int updateRateTooLowWarnThreshold{50};
 
   /*!
@@ -51,6 +67,18 @@ struct EthercatMasterConfiguration{
    * TODO: needs to be tested further
    */
   double rateCompensationCoefficient{0.5};
+
+  /*!
+   * Bus diagnosis, reads the bus state, after a hardcoded amount of PDO update cycles, prints enhanced logs if the Bus is not in OPERATIONAL
+   */
+  bool doBusDiagnosis{false};
+
+
+  /*!
+   * does more bus diagnosis, reads out some error counters after a hardcoded amount of PDO cycles, and logs them to a file found in ~/.ethercat_master/network_interface_name/<datetime>.log
+   */
+  bool logErrorCounters{false};
+
 };
 
 } // namespace ecat_master
